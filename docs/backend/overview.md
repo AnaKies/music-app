@@ -11,6 +11,7 @@ This directory stores the approved final-state backend engineering view for the 
 The backend documentation maintained here may cover:
 
 - backend structure
+- implementation stack and runtime tooling
 - service responsibilities
 - API design and contracts
 - persistence behavior

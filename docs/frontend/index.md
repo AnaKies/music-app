@@ -6,6 +6,8 @@ This directory contains the approved target frontend state for the project.
 
 - [Frontend Agent](../../agents/Frontend.md): Behavior definition and implementation rules for the project-specific frontend agent.
 - [Frontend Overview](./overview.md): High-level description of the current frontend documentation scope and maintenance rules.
+- [Frontend Implementation Plan](./implementation-plan.md): Recommended frontend stack, libraries, and delivery priorities for the MVP.
+- [Frontend Application Structure](./application-structure.md): Planned page, feature, state, and UI-layer structure for the MVP.
 
 ## Structure Rules
 

@@ -18,6 +18,33 @@ The MVP must make it possible to answer these questions:
 - whether warnings or failures occurred
 - why a result should be considered trustworthy or uncertain
 
+## Observability Flow Diagram
+
+```mermaid
+flowchart LR
+    CASE[Transposition Case] --> JOB[Processing Status]
+    SCORE[Score Document] --> JOB
+    JOB --> REC[Recommendation Trace]
+    REC --> SEL[Selected Recommendation]
+    SEL --> TX[Transformation Outcome]
+    TX --> WARN[Warnings]
+    TX --> FAIL[Failure Code]
+    TX --> RESULT[Result Artifact]
+    JOB --> UI[Frontend Status View]
+    WARN --> UI
+    FAIL --> UI
+    RESULT --> UI
+```
+
+Diagram purpose:
+Show which runtime signals and metadata artifacts make the processing flow observable from case selection through recommendation and final result delivery.
+
+What to read from it:
+Observability is not only job status. It also depends on traceable links between the active case, uploaded score, recommendation output, selected range, warnings, failures, and final artifact.
+
+Why it belongs here:
+This file owns runtime visibility, traceability, and the operational reading of processing state.
+
 ## Minimum Runtime States
 
 Each processing flow should expose a typed status.
@@ -100,6 +127,19 @@ The frontend should expose at least:
 - the recommendation result and confidence
 - warnings that affect playability or output quality
 - explicit failure messages when processing stops
+
+The frontend should also distinguish between:
+
+- blocking errors that stop the user from continuing
+- recoverable errors that allow retry
+- informational warnings that do not block selection or download
+
+## Frontend State Mapping Expectations
+
+The frontend should not invent state meaning on its own.
+Case state, recommendation state, transformation state, and failure state should be interpreted from documented backend and observability signals.
+
+The UI-facing state mapping for the MVP is documented in [Frontend State Mapping](./frontend-state-mapping.md).
 
 ## Storage Expectations
 

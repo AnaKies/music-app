@@ -11,6 +11,7 @@ This directory stores the approved final-state frontend implementation view for 
 The frontend documentation maintained here may cover:
 
 - frontend structure
+- implementation stack and library choices
 - component responsibilities
 - page-level composition
 - UI state handling

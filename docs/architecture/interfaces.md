@@ -18,6 +18,38 @@ This document defines contract boundaries only:
 System flow and product behavior belong in [System Context](./system-context.md).
 Module responsibilities belong in [Module Design](./module-design.md).
 
+## Interface Flow Diagram
+
+```mermaid
+flowchart LR
+    FE[Frontend Application] --> I1[POST /interviews]
+    FE --> C1[POST /cases]
+    FE --> C2[GET /cases/{id}]
+    FE --> S1[POST /scores]
+    FE --> R1[POST /recommendations]
+    FE --> T1[POST /transformations]
+    FE --> T2[GET /transformations/{id}]
+    FE --> D1[GET /scores/{id}/download]
+
+    I1 --> AIQ[AI Interview Service]
+    C1 --> CASE[Transposition Case Service]
+    C2 --> CASE
+    S1 --> PARSER[Score Parser]
+    R1 --> AIR[AI Recommendation Service]
+    T1 --> TX[Transformation Engine]
+    T2 --> JOB[Processing Job State]
+    D1 --> STORE[Artifact Storage]
+```
+
+Diagram purpose:
+Show how the frontend-facing API contracts map onto the major internal service boundaries behind them.
+
+What to read from it:
+The frontend talks only to API contracts, while the backend routes those contracts to specialized modules for interviewing, case management, parsing, recommendation, execution, job tracking, and artifact delivery.
+
+Why it belongs here:
+This file owns contract boundaries and is the right place to visualize how external endpoints align with internal interface ownership.
+
 ## External API
 
 ### `POST /interviews`
@@ -27,8 +59,31 @@ Start or continue the AI-guided questionnaire.
 
 Contract shape:
 
-- input: interview session identifier when continuing, latest user answer payload
-- output: next question, collected profile state, completion status
+- input: interview session identifier when continuing, latest structured user answer payload
+- output: next question object, collected profile state, completion status
+
+Recommended question object shape:
+
+- `questionId`
+- `prompt`
+- `questionType` such as `single_select`, `multi_select`, `note_input`, `range_input`, or `free_text`
+- `options` when the question is selection-based
+- `validationRules`
+- `isRequired`
+- `helpText` when clarification is needed
+
+Recommended selection option shape:
+
+- `label`
+- `value`
+- optional `description`
+
+Recommended answer payload shape:
+
+- `questionId`
+- `answerType`
+- `value`
+- optional `clientValidationState` when the frontend wants to report local validation results without making it a required contract field
 
 Failure behavior:
 
@@ -91,6 +146,15 @@ Contract shape:
 
 - output: case summary, active constraints, linked score count, status
 
+Recommended case status values:
+
+- `new`
+- `interview_in_progress`
+- `ready_for_upload`
+- `recommendation_ready`
+- `completed`
+- `archived`
+
 Failure behavior:
 
 - return not found for unknown cases
@@ -132,6 +196,17 @@ Contract shape:
 
 - input: `scoreDocumentId`, `transpositionCaseId`
 - output: recommendation set with one or more target ranges and explanations
+
+Recommended recommendation item shape:
+
+- `recommendationId`
+- `label`
+- `targetRange`
+- `recommendedKey` when applicable
+- `confidence`
+- `summaryReason`
+- `warnings`
+- `isPrimary`
 
 Failure behavior:
 
@@ -208,6 +283,9 @@ Backend API
 
 Evolution:
 This interface may later support PDF or MIDI exports in addition to MusicXML.
+
+Frontend note:
+For the MVP, download of MusicXML is required. Direct print support is optional and may be implemented as a frontend convenience feature rather than a backend-specific output format.
 
 ## Internal Contracts
 

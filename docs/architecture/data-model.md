@@ -210,6 +210,15 @@ erDiagram
     TransformationResult }o--|| ScoreDocument : exports_as
 ```
 
+Diagram purpose:
+Show the core persistence entities and the relationships that connect reusable cases, uploaded scores, recommendations, execution requests, and generated results.
+
+What to read from it:
+The model separates reusable user/instrument context from uploaded files, AI recommendation outputs, execution tracking, and final artifacts so each lifecycle can evolve independently.
+
+Why it belongs here:
+This file owns the persistent entities, their lifecycle role, and their relationship structure.
+
 ## Consistency Rules
 
 - A transformed file must always retain a reference to the original input request.

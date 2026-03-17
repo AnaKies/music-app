@@ -24,6 +24,14 @@ This document describes the external actors, system boundary, and end-to-end int
 9. The user can download the output MusicXML and use it for printing or print it directly, depending on the frontend implementation.
 10. Later uploads can reuse the same case until the user resets it or starts a new case for another instrument.
 
+## Frontend-Relevant Flow Clarifications
+
+- The interview is blocking for the first upload inside a new case.
+- A case becomes upload-ready only after the interview has produced a complete enough constraint set for recommendation.
+- Later uploads in the same active case do not require the interview to be repeated unless the user explicitly resets or edits the case.
+- Recommendation selection is a required user step before deterministic transformation starts.
+- In the MVP, direct in-app print support is optional. The required capability is download of the output MusicXML. Printing may be implemented either directly in the frontend or by exporting the file for external printing.
+
 ## MVP Scope
 
 - input format: MusicXML only
@@ -54,12 +62,21 @@ Outside the product boundary:
 
 ```mermaid
 flowchart LR
-    U[User] --> FE[Frontend]
-    FE --> PS[Product System]
+    U[User] --> FE[Frontend Application]
+    FE --> PS[Backend Product System]
     PS --> OS[(Object Storage)]
     PS --> DB[(Metadata Store)]
     PS --> FE
 ```
+
+Diagram purpose:
+Show the system boundary at the highest level and separate the user-facing frontend from the internal product runtime and storage dependencies.
+
+What to read from it:
+The user interacts through the frontend application, while the product system owns runtime behavior and persists artifacts and metadata in dedicated stores.
+
+Why it belongs here:
+This file owns the external system view, boundary definition, and top-level actor-to-system interaction flow.
 
 ## Boundary Decisions
 

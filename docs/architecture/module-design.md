@@ -31,6 +31,15 @@ flowchart LR
     API --> STORE
 ```
 
+Diagram purpose:
+Show the main internal runtime modules and the direction of responsibility and data flow between them.
+
+What to read from it:
+The backend API coordinates case handling, parsing, AI-assisted recommendation work, deterministic transformation, export, and storage without collapsing those concerns into one module.
+
+Why it belongs here:
+This file owns the internal module structure and responsibility boundaries inside the product runtime.
+
 ## Diagram Legend
 
 - `Frontend`: user-facing flow for case selection, questionnaire, upload, recommendation choice, and result access
