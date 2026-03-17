@@ -4,11 +4,11 @@ Reference: [Architecture Index](./index.md)
 
 ## Purpose
 
-This directory stores the approved final-state software architecture for the AI-based music sheet octave converter.
+This document summarizes the approved high-level architecture direction for the AI-guided sheet music transposition system.
 
 ## Current Scope
 
-The architecture documentation maintained here may cover:
+This overview defines the architectural baseline for:
 
 - system structure
 - module boundaries
@@ -27,8 +27,23 @@ The approved target direction is an AI-guided decision architecture with determi
 AI is responsible for structured user interviewing, instrument-specific capability interpretation, and recommendation of target transposition ranges.
 Backend logic is responsible for validated score parsing, deterministic transposition, export, and persistence.
 
-The initial product scope is a focused converter, not a full composition platform.
+## Architectural Principles
+
+- AI supports decision-making, but deterministic backend logic owns final score mutation
+- user-specific constraints persist inside a reusable transposition case
+- uploaded score formats are isolated from internal domain logic through a canonical score model
+- recommendation and execution are separate responsibilities
+- original and transformed artifacts remain separately stored and traceable
+
+## Product Scope Direction
+
+The initial product scope is a focused transposition system, not a full composition platform.
 The architecture still preserves a growth path toward a larger sheet-processing platform.
+
+## Document Role
+
+This file explains the overall architectural direction and governing principles.
+Detailed actor flow, system boundaries, and runtime interactions belong in [System Context](./system-context.md).
 
 ## Non-Functional Priorities
 

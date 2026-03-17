@@ -1,11 +1,13 @@
 # Data Model
 
 Reference: [Architecture Index](./index.md)
+Related modules: [Module Design](./module-design.md)
+Related context: [System Context](./system-context.md)
 
 ## Modeling Principle
 
-The system separates interview-derived player constraints, structured instrument knowledge, uploaded artifacts, normalized musical structure, recommendation outputs, transformation requests, and generated results.
-This keeps conversational intake, file handling, recommendation logic, and deterministic execution independent.
+The system separates persistent transposition case constraints, structured instrument knowledge, uploaded artifacts, normalized musical structure, recommendation outputs, transformation requests, and generated results.
+This keeps conversational intake, reusable case state, file handling, recommendation logic, and deterministic execution independent.
 
 ## Core Entities
 
@@ -78,14 +80,15 @@ Managed as reference data.
 Operational notes:
 Profiles should be versioned carefully because transformation behavior depends on them.
 
-### PlayerConstraintProfile
+### TranspositionCase
 
 Purpose:
-Represent the structured output of the AI-guided questionnaire for a specific user and instrument context.
+Represent a persistent user and instrument context that can be reused across multiple score uploads.
 
 Key fields:
 
 - `id`
+- `userId`
 - `instrumentProfileId`
 - `highestPlayableTone`
 - `lowestPlayableTone`
@@ -95,13 +98,15 @@ Key fields:
 - `preferredKeys`
 - `comfortRangeMin`
 - `comfortRangeMax`
+- `status`
 - `createdAt`
+- `updatedAt`
 
 Lifecycle:
-Created and updated during the interview flow until the profile is finalized.
+Created during the interview flow and reused across multiple uploads until the user resets, archives, or replaces it.
 
 Operational notes:
-This profile captures the playable reality of a specific user, not just the general capability of an instrument.
+This case captures the playable reality of a specific user and instrument setup, not just the general capability of an instrument.
 
 ### TransformationRequest
 
@@ -112,7 +117,7 @@ Key fields:
 
 - `id`
 - `sourceScoreDocumentId`
-- `playerConstraintProfileId`
+- `transpositionCaseId`
 - `selectedRecommendationId`
 - `targetRange`
 - `mode`
@@ -133,7 +138,7 @@ Key fields:
 
 - `id`
 - `scoreDocumentId`
-- `playerConstraintProfileId`
+- `transpositionCaseId`
 - `recommendedRanges`
 - `recommendedKeys`
 - `explanations`
@@ -193,11 +198,12 @@ Confidence should be used only as advisory metadata, not as the only quality sig
 ```mermaid
 erDiagram
     ScoreDocument ||--o{ CanonicalScore : source_for
-    InstrumentProfile ||--o{ PlayerConstraintProfile : baseline_for
+    InstrumentProfile ||--o{ TranspositionCase : baseline_for
     ScoreDocument ||--o{ RangeRecommendation : analyzed_as
-    PlayerConstraintProfile ||--o{ RangeRecommendation : guides
+    TranspositionCase ||--o{ ScoreDocument : groups
+    TranspositionCase ||--o{ RangeRecommendation : guides
     ScoreDocument ||--o{ TransformationRequest : input_for
-    PlayerConstraintProfile ||--o{ TransformationRequest : selected_for
+    TranspositionCase ||--o{ TransformationRequest : selected_for
     RangeRecommendation ||--o{ TransformationRequest : selected_from
     TransformationRequest ||--|| ProcessingJob : creates
     ProcessingJob ||--|| TransformationResult : produces
@@ -210,4 +216,5 @@ erDiagram
 - A processing job must not overwrite the original artifact.
 - Canonical score schema versioning must be explicit.
 - AI-generated recommendations must remain attributable through recommendation and processing metadata.
-- Interview-derived player constraints must be stored separately from generic instrument profiles.
+- Transposition case constraints must persist across multiple uploads until the user resets or replaces the case.
+- User-specific case constraints must be stored separately from generic instrument profiles.

@@ -1,6 +1,22 @@
 # Interfaces
 
 Reference: [Architecture Index](./index.md)
+Related context: [System Context](./system-context.md)
+Related modules: [Module Design](./module-design.md)
+
+## Document Role
+
+This document defines contract boundaries only:
+
+- external API endpoints
+- internal module-to-module contracts
+- input and output shapes
+- failure behavior
+- ownership
+- versioning expectations
+
+System flow and product behavior belong in [System Context](./system-context.md).
+Module responsibilities belong in [Module Design](./module-design.md).
 
 ## External API
 
@@ -29,11 +45,11 @@ The questionnaire contract should remain structured even if the conversation lay
 ### `GET /interviews/{id}`
 
 Purpose:
-Retrieve the current structured interview state and derived player constraint profile.
+Retrieve the current structured interview state and derived transposition case summary.
 
 Contract shape:
 
-- output: interview status, collected answers, derived profile summary
+- output: interview status, collected answers, derived case summary
 
 Failure behavior:
 
@@ -45,6 +61,46 @@ Backend API
 Evolution:
 Additional derived fields should be additive.
 
+### `POST /cases`
+
+Purpose:
+Create a new transposition case or explicitly reset an existing one.
+
+Contract shape:
+
+- input: instrument identity, optional existing case action such as `reset`
+- output: `transpositionCaseId`, status, case summary
+
+Failure behavior:
+
+- reject unknown reset targets
+- reject conflicting case actions
+
+Ownership:
+Backend API
+
+Evolution:
+The case model may later support archive and clone behavior.
+
+### `GET /cases/{id}`
+
+Purpose:
+Retrieve the active constraints and state for a transposition case.
+
+Contract shape:
+
+- output: case summary, active constraints, linked score count, status
+
+Failure behavior:
+
+- return not found for unknown cases
+
+Ownership:
+Backend API
+
+Evolution:
+Additional summary fields should be additive.
+
 ### `POST /scores`
 
 Purpose:
@@ -52,7 +108,7 @@ Upload an original score document.
 
 Contract shape:
 
-- input: multipart upload with MusicXML file and associated interview or profile identifier
+- input: multipart upload with MusicXML file and associated `transpositionCaseId`
 - output: `scoreDocumentId`, format, validation status
 
 Failure behavior:
@@ -74,13 +130,13 @@ Request AI-generated target range recommendations for an uploaded score.
 
 Contract shape:
 
-- input: `scoreDocumentId`, `playerConstraintProfileId`
+- input: `scoreDocumentId`, `transpositionCaseId`
 - output: recommendation set with one or more target ranges and explanations
 
 Failure behavior:
 
 - reject unknown score IDs
-- reject missing or incomplete player profiles
+- reject missing or incomplete case constraints
 - return failed analysis status with typed explanation when recommendation cannot be produced reliably
 
 Ownership:
@@ -155,15 +211,15 @@ This interface may later support PDF or MIDI exports in addition to MusicXML.
 
 ## Internal Contracts
 
-### AI Interview Service to Player Constraint Profile
+### AI Interview Service to Transposition Case Constraints
 
 Purpose:
-Transform conversational answers into a structured profile for later recommendation logic.
+Transform conversational answers into case constraints for later recommendation logic.
 
 Contract shape:
 
 - input: interview state and user answers
-- output: `PlayerConstraintProfile v1`
+- output: `TranspositionCaseConstraints v1`
 
 Failure behavior:
 
@@ -173,7 +229,7 @@ Ownership:
 AI interview service
 
 Evolution:
-The profile schema must be explicitly versioned.
+The case constraint schema must be explicitly versioned.
 
 ### Parser to Canonical Score Model
 
@@ -220,11 +276,11 @@ Rule metadata can grow, but the score contract should remain stable within a ver
 ### Canonical Score Model to AI Recommendation Service
 
 Purpose:
-Request recommended target ranges for a parsed score and structured player profile.
+Request recommended target ranges for a parsed score and active transposition case.
 
 Contract shape:
 
-- input: `CanonicalScore v1`, `PlayerConstraintProfile v1`, instrument knowledge context
+- input: `CanonicalScore v1`, `TranspositionCaseConstraints v1`, instrument knowledge context
 - output: one or more recommended target ranges, confidence metadata, explanation metadata
 
 Failure behavior:

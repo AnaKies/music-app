@@ -5,11 +5,12 @@ This directory contains the approved target architecture for the project.
 ## Documents
 
 - [Architect Agent](../../agents/Architect.md): Behavior definition of the project-specific architecture agent.
-- [Architecture Overview](./overview.md): High-level architecture for the AI-based music sheet octave converter.
+- [Architecture Overview](./overview.md): High-level architecture for the AI-guided sheet music transposition system.
 - [System Context](./system-context.md): User flow, system boundaries, and top-level component relationships.
 - [Module Design](./module-design.md): Internal services, ownership boundaries, and runtime responsibilities.
 - [Interfaces](./interfaces.md): External APIs and internal contracts between major components.
 - [Data Model](./data-model.md): Core entities, lifecycle expectations, and persistence direction.
+- [Observability](./observability.md): Runtime status, warnings, recommendation traceability, and processing metadata.
 
 ## Structure Rules
 
