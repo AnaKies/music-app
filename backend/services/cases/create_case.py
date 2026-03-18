@@ -17,9 +17,8 @@ def create_case(db: Session, payload: CaseCreateRequest) -> CaseCreateResponse:
     
     # Create domain model instance
     new_case = TranspositionCase(
-        user_id=payload.userId,
         status=CaseStatus.NEW,
-        instrument_identity=payload.instrumentIdentity,
+        instrument_identity=payload.instrument_identity,
         created_at=now,
         updated_at=now,
     )
@@ -35,7 +34,6 @@ def create_case(db: Session, payload: CaseCreateRequest) -> CaseCreateResponse:
         status=new_case.status,
         caseSummary=CaseSummary(
             id=new_case.id,
-            userId=new_case.user_id,
             status=new_case.status,
             instrumentIdentity=new_case.instrument_identity,
             scoreCount=0,

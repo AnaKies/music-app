@@ -7,35 +7,20 @@ from backend.domain.cases.models import TranspositionCase
 
 
 class CaseService:
-    """
-    Service layer for transposition case operations.
-    
-    Provides database queries and schema transformation methods
-    for case-related business logic.
-    """
-    
     @staticmethod
     def get_case_by_id(db: Session, case_id: str) -> Optional[TranspositionCase]:
-        """Retrieve a single case by its unique identifier."""
         return db.query(TranspositionCase).filter(TranspositionCase.id == case_id).first()
 
     @staticmethod
     def get_all_cases(db: Session) -> List[TranspositionCase]:
-        """Retrieve all cases from the database."""
         return db.query(TranspositionCase).all()
 
     @staticmethod
     def build_case_summary(case: TranspositionCase) -> CaseSummary:
-        """
-        Build a CaseSummary schema from a domain model.
-        
-        Used for list endpoints where full constraint details are not needed.
-        """
         return CaseSummary(
             id=case.id,
             status=case.status,
             instrumentIdentity=case.instrument_identity,
-            userId=case.user_id,
             scoreCount=case.score_count,
             createdAt=case.created_at,
             updatedAt=case.updated_at,
@@ -43,17 +28,10 @@ class CaseService:
 
     @staticmethod
     def build_case_detail(case: TranspositionCase) -> CaseDetail:
-        """
-        Build a CaseDetail schema from a domain model.
-        
-        Used for detail endpoints where constraint information is required.
-        Includes all confirmed user-specific playable constraints.
-        """
         return CaseDetail(
             id=case.id,
             status=case.status,
             instrumentIdentity=case.instrument_identity,
-            userId=case.user_id,
             scoreCount=case.score_count,
             createdAt=case.created_at,
             updatedAt=case.updated_at,

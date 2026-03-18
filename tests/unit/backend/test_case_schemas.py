@@ -103,21 +103,18 @@ class TestCaseSummary:
         assert summary.id == "case-123"
         assert summary.status == CaseStatus.NEW
         assert summary.instrumentIdentity == "trumpet-bb"
-        assert summary.userId is None
         assert summary.scoreCount == 0
 
     def test_case_summary_with_optional_fields(self, sample_timestamp):
-        """Verify CaseSummary accepts optional fields."""
+        """Verify CaseSummary accepts additive non-user fields."""
         summary = CaseSummary(
             id="case-456",
             status=CaseStatus.READY_FOR_UPLOAD,
             instrumentIdentity="alto-sax-eb",
-            userId="user-789",
             scoreCount=5,
             createdAt=sample_timestamp,
             updatedAt=sample_timestamp,
         )
-        assert summary.userId == "user-789"
         assert summary.scoreCount == 5
 
     def test_case_summary_serialization(self, sample_timestamp):
@@ -133,7 +130,6 @@ class TestCaseSummary:
         assert data["id"] == "case-789"
         assert data["status"] == "recommendation_ready"
         assert data["instrumentIdentity"] == "trombone"
-        assert "userId" in data
         assert "scoreCount" in data
 
     def test_case_summary_from_attributes(self, sample_timestamp):
@@ -143,7 +139,6 @@ class TestCaseSummary:
                 "id": "case-orm-1",
                 "status": "interview_in_progress",
                 "instrumentIdentity": "flute",
-                "userId": None,
                 "scoreCount": 0,
                 "createdAt": sample_timestamp,
                 "updatedAt": sample_timestamp,

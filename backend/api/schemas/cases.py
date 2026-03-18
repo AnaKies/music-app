@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,41 +19,33 @@ class ExistingCaseAction(str, Enum):
 
 
 class CaseCreateRequest(BaseModel):
-    instrumentIdentity: str = Field(
+    instrument_identity: str = Field(
         min_length=1,
         description="Stable frontend or product identity for the target instrument context.",
     )
-    userId: Optional[str] = Field(
-        default=None,
-        description="Unique user identifier.",
-    )
-    existingCaseAction: Optional[ExistingCaseAction] = Field(
+    existing_case_action: Optional[ExistingCaseAction] = Field(
         default=None,
         description="Optional explicit action on an existing case.",
     )
-    existingCaseId: Optional[str] = Field(
+    existing_case_id: Optional[str] = Field(
         default=None,
         description="Existing case identifier required when a case action is requested.",
     )
 
 
 class CaseConstraints(BaseModel):
-    """
-    Active constraints for a transposition case in camelCase.
-    """
-    highestPlayableTone: Optional[str] = Field(default=None)
-    lowestPlayableTone: Optional[str] = Field(default=None)
-    restrictedTones: List[str] = Field(default_factory=list)
-    restrictedRegisters: List[str] = Field(default_factory=list)
-    difficultKeys: List[str] = Field(default_factory=list)
-    preferredKeys: List[str] = Field(default_factory=list)
-    comfortRangeMin: Optional[str] = Field(default=None)
-    comfortRangeMax: Optional[str] = Field(default=None)
+    highest_playable_tone: Optional[str] = Field(default=None)
+    lowest_playable_tone: Optional[str] = Field(default=None)
+    restricted_tones: list[str] = Field(default_factory=list)
+    restricted_registers: list[str] = Field(default_factory=list)
+    difficult_keys: list[str] = Field(default_factory=list)
+    preferred_keys: list[str] = Field(default_factory=list)
+    comfort_range_min: Optional[str] = Field(default=None)
+    comfort_range_max: Optional[str] = Field(default=None)
 
 
 class CaseSummary(BaseModel):
     id: str = Field(description="Unique case identifier.")
-    userId: Optional[str] = Field(default=None)
     status: CaseStatus = Field(description="Current case lifecycle state.")
     instrumentIdentity: str = Field(description="Stable frontend identity.")
     scoreCount: int = Field(default=0)
@@ -69,7 +61,6 @@ class CaseCreateResponse(BaseModel):
 
 class CaseDetail(BaseModel):
     id: str
-    userId: Optional[str] = None
     status: CaseStatus
     instrumentIdentity: str
     scoreCount: int = 0
