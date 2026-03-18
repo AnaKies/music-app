@@ -74,6 +74,10 @@ Recommended question object shape:
 - `isRequired`
 - `helpText` when clarification is needed
 
+Safety note:
+Structured question types should be preferred over free-form collection whenever they are sufficient for product behavior.
+Free-text questions should remain exceptional and should not become the default persistence shape for user constraints.
+
 Recommended selection option shape:
 
 - `label`
@@ -98,6 +102,7 @@ Backend API with AI interview service
 
 Evolution:
 The questionnaire contract should remain structured even if the conversation layer changes.
+The contract should evolve toward more structured fields rather than toward broader free-text persistence.
 
 ### `GET /interviews/{id}`
 
@@ -199,7 +204,7 @@ Retrieve the current status snapshot for an uploaded score document.
 
 Contract shape:
 
-- output: `scoreDocumentId`, processing status, active `transpositionCaseId`, recommendation snapshot summary, stale flag when applicable, warnings, failure details, available artifact references
+- output: `scoreDocumentId`, processing status, active `transpositionCaseId`, recommendation snapshot summary, stale flag when applicable, warnings, failure details, available artifact references, normalized presentation metadata
 
 Recommended score processing status values:
 
@@ -211,6 +216,16 @@ Recommended score processing status values:
 - `transforming`
 - `completed`
 - `failed`
+
+Recommended presentation metadata fields:
+
+- `severity` for warning and failure rendering
+- `isRetryable`
+- `confidence` when recommendation state is involved
+- `safeSummary` for concise user-facing status explanation without leaking raw internal errors
+
+Safety note:
+Read models must not expose raw provider output, raw prompts, internal storage paths, or raw backend exception text through user-facing status contracts.
 
 Failure behavior:
 
@@ -293,6 +308,15 @@ Retrieve processing state and transformation outcome.
 Contract shape:
 
 - output: status, warnings, result identifiers, processing path summary
+
+Recommended presentation metadata fields:
+
+- `severity`
+- `isRetryable`
+- `safeSummary`
+
+Safety note:
+Transformation status responses must remain presentation-safe and must not leak raw backend diagnostics into the frontend contract.
 
 Failure behavior:
 

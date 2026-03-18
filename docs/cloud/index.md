@@ -6,6 +6,7 @@ This directory contains the approved target cloud state for the project.
 
 - [Cloud Agent](../../agents/Cloud.md): Behavior definition and engineering rules for the project-specific cloud agent.
 - [Cloud Overview](./overview.md): High-level description of the current cloud documentation scope and maintenance rules.
+- [MVP Deployment Model](./mvp-deployment-model.md): Runtime topology, managed-service choices, and environment strategy for the MVP.
 
 ## Structure Rules
 

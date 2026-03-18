@@ -130,6 +130,7 @@ Typical warnings include:
 - export consistency issues
 
 Warnings should be stored with enough structure that the frontend can show them clearly.
+This structure should include stable severity semantics and concise safe summaries rather than forcing the UI to interpret raw technical output.
 
 ## Failure Model
 
@@ -144,6 +145,7 @@ Recommended MVP failure classes:
 - `EXPORT_FAILED`
 
 The system should avoid generic unknown failures when a more precise type can be produced.
+Failure read models should also expose whether recovery is retryable and should include a concise user-safe summary for the active workflow stage.
 
 ## UI Expectations
 
@@ -154,6 +156,10 @@ The frontend should expose at least:
 - the recommendation result and confidence
 - warnings that affect playability or output quality
 - explicit failure messages when processing stops
+
+The backend should therefore expose normalized presentation metadata in addition to typed status codes so the UI can stay calm, structured, and consistent across screens.
+This presentation metadata must remain privacy-aware and presentation-safe:
+it should not expose raw prompts, raw provider outputs, internal storage URIs, or raw backend exception traces.
 
 The frontend should also distinguish between:
 
@@ -174,6 +180,7 @@ Observability metadata belongs in the metadata store, not only in ephemeral runt
 
 Object storage keeps the source and output files.
 The metadata store keeps statuses, identifiers, warnings, recommendation traces, and failure codes.
+Sensitive internal diagnostic detail may remain in protected logs or internal telemetry, but it should not become part of normal user-facing read models by default.
 
 ## Relationship To Other Documents
 

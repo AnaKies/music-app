@@ -17,6 +17,7 @@ The cloud documentation maintained here may cover:
 - infrastructure tooling
 - prototype-to-production transitions
 - scaling and operations expectations
+- MVP deployment topology and managed-service strategy
 
 ## Documentation Principle
 

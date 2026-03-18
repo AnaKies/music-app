@@ -35,6 +35,7 @@ The AI layer does not own:
 
 Backend runtime expectation:
 The same backend-owned AI provider adapter and context-assembly boundaries should be used consistently from both synchronous request handling and asynchronous worker execution paths.
+Provider timeout, retry, and credential configuration should also remain runtime-consistent between API and worker environments.
 
 ## Required Architecture Alignment
 
@@ -42,6 +43,7 @@ The same backend-owned AI provider adapter and context-assembly boundaries shoul
 - AI-derived but not yet confirmed constraints must remain separate from confirmed case constraints through `InferredConstraintSet`.
 - Recommendation confidence must follow the operational `Confidence And Fallback Policy` defined in [Observability](../architecture/observability.md).
 - Interview outputs, inferred constraints, and confirmed case constraints must not be treated as interchangeable states.
+- AI outputs used by normal product flows must remain schema-constrained and presentation-safe rather than relying on raw provider text.
 
 ## Best-Practice Baseline And Adapted Recommendation
 
@@ -82,8 +84,8 @@ This file owns the AI implementation approach and runtime responsibility model f
 3. Implement the AI recommendation path that consumes canonical score summaries and active case constraints.
 4. Implement explicit handling for `InferredConstraintSet` so advisory AI-derived constraints remain distinguishable from confirmed user constraints.
 5. Add confidence signaling and visible failure behavior for low-certainty outputs.
-6. Add AI-specific observability for prompts, structured outputs, confidence, and failure classes.
-7. Add evaluation fixtures for representative interview and recommendation cases.
+6. Add AI-specific observability for prompts, structured outputs, confidence, and failure classes while keeping raw provider details out of normal user-facing flows.
+7. Add evaluation fixtures for representative interview and recommendation cases, including over-inference, blocked-confidence, and confirmation-boundary cases.
 
 ## Dependency Policy
 
@@ -93,3 +95,5 @@ This file owns the AI implementation approach and runtime responsibility model f
 - Do not bypass backend validation with direct model outputs.
 - Do not promote inferred constraints into confirmed case state without backend-controlled confirmation rules.
 - Do not create separate AI-call semantics for API and worker paths when the same provider adapter and context contract can be reused.
+- Do not rely on raw prompt text, raw provider responses, or free-form model prose as normal user-facing product outputs.
+- Do not let environment-specific provider settings drift silently between API and worker deployments.

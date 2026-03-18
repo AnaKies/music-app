@@ -31,6 +31,7 @@ Never mutated in place after persistence.
 
 Operational notes:
 Original and transformed artifacts should always be stored separately.
+`storageUri` is internal persistence metadata and should not be exposed directly as a user-facing read-model field.
 
 ### CanonicalScore
 
@@ -107,6 +108,7 @@ May be replaced, confirmed into the main case fields, or discarded as the interv
 
 Operational notes:
 This entity must remain distinct from both generic instrument knowledge and confirmed user-specific case constraints.
+When structured fields are sufficient, inferred constraints should remain stored in typed fields rather than broad free-text blobs.
 
 ### TranspositionCase
 
@@ -136,6 +138,7 @@ Created during the interview flow and reused across multiple uploads until the u
 Operational notes:
 This case captures the playable reality of a specific user and instrument setup, not just the general capability of an instrument.
 Confirmed case fields should remain distinguishable from AI-inferred but not yet confirmed constraints.
+Structured constraint fields should be preferred over unnecessary free-text persistence so user-specific capability data remains minimized and reviewable.
 
 ### TransformationRequest
 
@@ -201,6 +204,7 @@ Created at job start and updated until completion.
 
 Operational notes:
 Jobs should be observable without requiring direct access to generated files.
+Raw provider responses, raw prompts, and raw backend exception text should not be required as part of the user-facing observability model.
 
 ### TransformationResult
 

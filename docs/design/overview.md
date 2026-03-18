@@ -16,6 +16,7 @@ The design documentation maintained here may cover:
 - interface copy guidance
 - responsive behavior
 - accessibility expectations
+- product-facing frontend design concepts
 
 ## Documentation Principle
 

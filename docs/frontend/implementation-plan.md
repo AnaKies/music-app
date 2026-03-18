@@ -67,3 +67,21 @@ This file owns the implementation stack and delivery plan for the frontend rathe
 - Add `shadcn/ui` only as a selective primitive source, not as a full design substitute.
 - Avoid a large global store until real cross-feature state pressure exists.
 - Treat end-to-end testing as phase two after the core flow is stable.
+
+## Design-System Delivery Expectations
+
+- shared layout primitives should be implemented early so the product keeps one consistent workspace feel across all stages
+- status, warning, and confidence tokens should be implemented as reusable design tokens rather than per-screen ad hoc styling
+- typography and spacing decisions should reinforce the editorial, music-oriented product direction instead of default utility-first UI output
+
+## Safety Delivery Expectations
+
+- status rendering should consume typed backend metadata such as `severity`, `isRetryable`, `confidence`, and `safeSummary` instead of inventing UI behavior from raw errors
+- upload UX should display only trusted file metadata needed for the workflow and should not rely on raw file-content rendering by default
+- low-confidence states must be implemented as first-class UI states, not as cosmetically weaker success states
+
+## Cloud Delivery Expectations
+
+- frontend configuration should consume environment-scoped backend base URLs rather than hardcoded endpoints
+- preview deployments should be shareable for design and product review without changing application behavior assumptions
+- browser-exposed configuration must never include server-side storage or AI-provider secrets

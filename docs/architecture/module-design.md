@@ -20,6 +20,7 @@ flowchart LR
     API --> AIQ[AI Interview Service]
     AIQ --> CASE
     AIQ --> IKS[Instrument Knowledge Service]
+    API --> GUARD[Input And Presentation Safety Guard]
     CSM --> AIR[AI Recommendation Service]
     CASE --> AIR
     IKS --> AIR
@@ -53,6 +54,7 @@ This file owns the internal module structure and responsibility boundaries insid
 - `Score Parser`: validation and normalization of uploaded MusicXML
 - `Canonical Score Model`: stable internal music representation shared by downstream modules
 - `AI Interview Service`: structured collection of user-specific musical constraints
+- `Input And Presentation Safety Guard`: validation and normalization boundary for untrusted uploads and user-facing status/error safety
 - `Instrument Knowledge Service`: reusable instrument-level capability and notation knowledge
 - `AI Recommendation Service`: generation of one or more recommended target ranges
 - `Transformation Engine`: deterministic execution of the selected transposition
@@ -92,6 +94,18 @@ Responsibilities:
 - status reporting
 - expose durable score and transformation status snapshots for frontend polling
 - result delivery
+
+### Input And Presentation Safety Guard
+
+Purpose:
+Protect the runtime from unsafe raw input and prevent unsafe diagnostics from leaking into normal user-facing contracts.
+
+Responsibilities:
+
+- reject unsupported or oversized upload input before parser execution
+- enforce malformed-input rejection at the boundary where practical
+- normalize user-facing failure and status data into presentation-safe forms
+- keep raw diagnostics and internal implementation detail out of normal frontend contracts
 
 ### AI Interview Service
 
@@ -195,6 +209,7 @@ Responsibilities:
 - update score-processing snapshots and recommendation staleness markers in persistent metadata
 - surface typed failures and warnings back into metadata storage
 - keep long-running execution separate from synchronous API request handling
+- remain deployable as a runtime separate from the API process even though it belongs to the same product system
 
 ### Export Service
 
@@ -221,6 +236,7 @@ Responsibilities:
 
 - Frontend owns user interaction only.
 - Backend API owns external request contracts.
+- Worker execution remains a separate runtime concern from request handling even though both belong to the backend-owned product runtime.
 - AI interview and recommendation services own conversational and recommendation behavior.
 - The transposition case service owns persistence of per-instrument user context across uploads.
 - Structured instrument knowledge must remain available outside the model and must not exist only as prompt memory.

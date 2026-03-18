@@ -16,6 +16,7 @@ The safety documentation maintained here may cover:
 - security hardening expectations
 - AI safety and guardrail concerns
 - protective interaction and system controls
+- MVP-specific trust boundaries and safe-handling rules
 
 ## Documentation Principle
 

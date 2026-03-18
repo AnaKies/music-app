@@ -6,6 +6,7 @@ This directory contains the approved target design state for the project.
 
 - [Designer Agent](../../agents/Designer.md): Behavior definition and decision model for the project-specific design agent.
 - [Design Overview](./overview.md): High-level description of the current design documentation scope and maintenance rules.
+- [Frontend Design Concept](./frontend-concept.md): Product-facing design direction for the MVP frontend workflow.
 
 ## Structure Rules
 

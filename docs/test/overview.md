@@ -11,11 +11,17 @@ This directory stores the approved final-state testing and verification view for
 The test documentation maintained here may cover:
 
 - test strategy
+- test layering and ownership
 - coverage boundaries
 - regression-critical areas
 - AI-related evaluation expectations
 - safety-sensitive verification flows
 - release confidence criteria
+- observability and status-read-model verification
+
+## Current Documents
+
+- [MVP Test Strategy](./mvp-test-strategy.md): Main MVP verification plan across frontend, backend, AI, safety, and observability boundaries.
 
 ## Documentation Principle
 

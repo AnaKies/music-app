@@ -61,12 +61,14 @@ This file owns the concrete backend implementation stack and runtime tooling pla
 
 1. Set up the Python project structure, dependency management, and FastAPI application shell.
 2. Implement typed API schemas and route groups for interviews, cases, scores, recommendations, transformations, and downloads.
-3. Implement persistence models and migrations for cases, recommendation records, jobs, and result references.
-4. Implement score and transformation read endpoints so the frontend can poll stable status snapshots during worker-driven flows.
-5. Implement object-storage integration for original and transformed MusicXML artifacts.
-6. Implement the background-job path for parsing, recommendation generation, deterministic transformation, and export.
-7. Add structured logging, typed failure handling, recommendation-staleness tracking, and observable job-state persistence.
-8. Add automated tests for API contracts, service behavior, persistence paths, and job-state transitions.
+3. Implement upload hardening for file-type validation, size limits, malformed-input rejection, and parser-safe handoff.
+4. Implement persistence models and migrations for cases, recommendation records, jobs, and result references.
+5. Implement score and transformation read endpoints so the frontend can poll stable status snapshots during worker-driven flows.
+6. Implement object-storage integration for original and transformed MusicXML artifacts.
+7. Implement the background-job path for parsing, recommendation generation, deterministic transformation, and export.
+8. Add structured logging, typed failure handling, recommendation-staleness tracking, and observable job-state persistence.
+9. Normalize frontend-facing status payloads with stable severity, retryability, confidence, and concise safe summary fields.
+10. Add automated tests for API contracts, upload hardening, service behavior, persistence paths, presentation read models, and job-state transitions.
 
 ## Dependency Policy
 
@@ -74,3 +76,5 @@ This file owns the concrete backend implementation stack and runtime tooling pla
 - Keep AI-provider integration behind internal service boundaries rather than baking provider assumptions into route handlers.
 - Avoid introducing a second task queue or ORM layer unless the current stack becomes insufficient.
 - Treat synchronous shortcuts as temporary only if they do not violate the documented job-state model.
+- Keep raw diagnostics, provider payloads, and storage internals out of normal user-facing read models by default.
+- Expose health and readiness behavior explicitly enough that cloud runtimes can distinguish startup, healthy serving, and degraded worker operation.
