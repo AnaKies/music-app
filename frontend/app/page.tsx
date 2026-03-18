@@ -164,8 +164,8 @@ export default function CaseEntryPage() {
         instrument_identity: 'placeholder', // Will be set in interview
       });
       
-      // Navigate to interview flow with new case ID
-      router.push(`/interview?caseId=${response.transpositionCaseId}`);
+      // F1 ends at the dedicated new-case path, not the interview route yet.
+      router.push(`/cases/new?caseId=${response.transpositionCaseId}`);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);

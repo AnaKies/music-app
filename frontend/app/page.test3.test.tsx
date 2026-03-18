@@ -157,6 +157,6 @@ describe('Test-3: CaseEntryPage default-case selection behavior', () => {
         instrument_identity: 'placeholder',
       });
     });
-    expect(push).toHaveBeenCalledWith('/interview?caseId=new-case-id');
+    expect(push).toHaveBeenCalledWith('/cases/new?caseId=new-case-id');
   });
 });

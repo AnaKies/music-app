@@ -123,7 +123,7 @@ describe('Frontend-4: Create New Case Action', () => {
    * Acceptance Criterion 2: It routes or transitions into the new-case flow
    */
   describe('Navigation to New Case Flow', () => {
-    it('navigates to interview page after successful case creation', async () => {
+    it('navigates to the dedicated new-case page after successful case creation', async () => {
       vi.mocked(casesApi.listCases).mockResolvedValue([]);
       vi.mocked(casesApi.createCase).mockResolvedValue({
         transpositionCaseId: 'new-case-123',
@@ -146,9 +146,9 @@ describe('Frontend-4: Create New Case Action', () => {
         });
       });
       
-      // Verify navigation to interview flow
+      // Verify navigation to the existing F1 new-case route
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/interview?caseId=new-case-123');
+        expect(mockPush).toHaveBeenCalledWith('/cases/new?caseId=new-case-123');
       });
     });
 
