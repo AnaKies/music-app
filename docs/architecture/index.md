@@ -13,6 +13,7 @@ This directory contains the approved target architecture for the project.
 - [Observability](./observability.md): Runtime status, warnings, recommendation traceability, and processing metadata.
 - [Frontend State Mapping](./frontend-state-mapping.md): UI-facing case states, async states, and frontend interpretation of backend flow.
 - [Architecture Features](./features.md): Small MVP-first feature slices and their responsible agents.
+- [Repository Structure](./repository-structure.md): Recommended repository layout for implementation boundaries and junior-friendly work allocation.
 
 ## Structure Rules
 

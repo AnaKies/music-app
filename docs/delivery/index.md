@@ -6,6 +6,7 @@ This directory contains approved delivery-planning documents derived from the ar
 
 - [Junior Task Breakdown](./junior-task-breakdown.md): Junior-oriented task decomposition of the MVP features into small implementation work packages.
 - [Task Briefs Index](./task-briefs/index.md): Detailed assignable briefs for each junior task grouped by feature range.
+- [Repository Structure](../architecture/repository-structure.md): Recommended repository layout that keeps junior implementation work separated by runtime area and feature concern.
 
 ## Structure Rules
 
