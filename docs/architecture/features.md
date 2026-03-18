@@ -5,6 +5,7 @@ Related context: [System Context](./system-context.md)
 Related modules: [Module Design](./module-design.md)
 Related interfaces: [Interfaces](./interfaces.md)
 Related frontend state mapping: [Frontend State Mapping](./frontend-state-mapping.md)
+Related delivery planning: [Junior Task Breakdown](../delivery/junior-task-breakdown.md)
 
 ## Purpose
 
@@ -127,7 +128,7 @@ Scope:
 Responsible agents:
 
 - lead: `Backend`
-- support: `Frontend`
+- support: `Frontend`, `Test`
 - consult: `Architect`, `Safety`
 
 Why it is small:
@@ -348,6 +349,27 @@ Responsible agents:
 - support: `Frontend`, `Test`
 - consult: `Architect`
 
+### F16. Deployment And Environment Verification
+
+Goal:
+Verify that preview and production-like environments preserve the documented MVP workflow and typed runtime-state behavior after deployment.
+
+Scope:
+
+- run post-deploy smoke verification for frontend-to-backend connectivity
+- verify API and worker health after deployment
+- verify at least one durable score-status read path in the deployed environment
+- block release progression when deploy verification fails
+
+Responsible agents:
+
+- lead: `Cloud`
+- support: `Test`
+- consult: `Architect`
+
+Why it is small:
+This feature does not add new product behavior. It verifies that already implemented MVP behavior survives real deployment boundaries.
+
 ## First Usable MVP Cut
 
 The first meaningful product demo should include at least:
@@ -364,6 +386,7 @@ The first meaningful product demo should include at least:
 - `F10` Result Export
 - `F11` Processing Status Visibility
 - `F12` Result Download
+- `F16` Deployment And Environment Verification
 
 This is the smallest coherent slice that demonstrates the product promise:
 the user can define an instrument context, upload a score, receive AI-guided target-range recommendations, select one, and download a transformed result.
@@ -384,3 +407,8 @@ Natural follow-up features after the first usable MVP include:
 - `Architect` owns feature slicing at architecture level.
 - Specialist agents own implementation planning and execution inside their feature boundaries.
 - If a feature changes shared contracts, module boundaries, or state meaning, `Architect` must be consulted again.
+
+## Delivery Relationship
+
+This document owns feature slicing at architecture level.
+Junior-oriented execution breakdown, parallel tasking, and team delivery planning belong in [Junior Task Breakdown](../delivery/junior-task-breakdown.md).
