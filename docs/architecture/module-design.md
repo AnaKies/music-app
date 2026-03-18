@@ -15,6 +15,7 @@ flowchart LR
     FE[Frontend] --> API[Backend API]
     API --> CASE[Transposition Case Service]
     API --> PARSER[Score Parser]
+    API --> JOBS[Processing Worker Runtime]
     PARSER --> CSM[Canonical Score Model]
     API --> AIQ[AI Interview Service]
     AIQ --> CASE
@@ -23,9 +24,13 @@ flowchart LR
     CASE --> AIR
     IKS --> AIR
     API --> TX[Transformation Engine]
+    JOBS --> PARSER
+    JOBS --> AIR
     CSM --> TX
     CASE --> TX
+    JOBS --> TX
     TX --> EXPORT[Export Service]
+    JOBS --> EXPORT
     EXPORT --> STORE[Storage Layer]
     CASE --> STORE
     API --> STORE
@@ -51,6 +56,7 @@ This file owns the internal module structure and responsibility boundaries insid
 - `Instrument Knowledge Service`: reusable instrument-level capability and notation knowledge
 - `AI Recommendation Service`: generation of one or more recommended target ranges
 - `Transformation Engine`: deterministic execution of the selected transposition
+- `Processing Worker Runtime`: asynchronous execution path for long-running parsing, recommendation, transformation, and export steps
 - `Export Service`: conversion of transformed score data into downloadable output artifacts
 - `Storage Layer`: storage of files, statuses, references, warnings, and processing metadata
 
@@ -84,6 +90,7 @@ Responsibilities:
 - recommendation persistence access
 - persistence coordination
 - status reporting
+- expose durable score and transformation status snapshots for frontend polling
 - result delivery
 
 ### AI Interview Service
@@ -99,6 +106,7 @@ Responsibilities:
 - collect unplayable tones or problematic registers
 - collect difficult or unwanted tonalities
 - produce or update a structured transposition case constraint set
+- keep AI-inferred constraints distinguishable from confirmed user constraints until backend confirmation rules are satisfied
 
 ### Transposition Case Service
 
@@ -157,6 +165,7 @@ Recommend one or more suitable target ranges for the uploaded score.
 Responsibilities:
 
 - analyze the uploaded score against the active transposition case constraints
+- consider AI-inferred constraints only as advisory context when they are available
 - evaluate instrument limits and comfortable ranges
 - evaluate key suitability for the target instrument
 - propose one or more target ranges instead of assuming a single answer
@@ -173,6 +182,19 @@ Responsibilities:
 - enforce configured range constraints
 - preserve musical structure where possible
 - emit warnings when exact adaptation is not cleanly possible
+
+### Processing Worker Runtime
+
+Purpose:
+Execute long-running backend jobs outside the immediate request-response path while preserving observable processing state.
+
+Responsibilities:
+
+- run parsing, recommendation, transformation, and export steps asynchronously when requested by the backend API
+- update persistent job status as work progresses
+- update score-processing snapshots and recommendation staleness markers in persistent metadata
+- surface typed failures and warnings back into metadata storage
+- keep long-running execution separate from synchronous API request handling
 
 ### Export Service
 

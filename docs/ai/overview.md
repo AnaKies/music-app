@@ -11,6 +11,7 @@ This directory stores the approved final-state AI engineering view for the proje
 The AI documentation maintained here may cover:
 
 - LLM integration
+- AI implementation scope and runtime delivery model
 - retrieval and RAG design
 - embeddings and vector storage
 - tool use and agent workflows

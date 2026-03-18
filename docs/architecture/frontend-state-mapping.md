@@ -42,6 +42,8 @@ flowchart LR
     C --> C3[Reset Case]
     C3 --> B
     D --> E[Parsing]
+    D --> Q[Queued for Worker Processing]
+    Q --> E
     E --> E2[Retry Upload]
     E2 --> D
     E --> F[Recommendation Review]
@@ -66,7 +68,7 @@ Diagram purpose:
 Show the frontend-visible user journey, including the main success path and the key UX branch points that affect case reuse, retry, reset, and instrument switching.
 
 What to read from it:
-The frontend is not only a linear upload flow. It must support returning to interview-driven constraint editing, retrying failed steps, reusing a case for another score, and switching to another instrument context.
+The frontend is not only a linear upload flow. It must support returning to interview-driven constraint editing, retrying failed steps, reusing a case for another score, switching to another instrument context, and showing queued background processing before active execution begins.
 
 Why it belongs here:
 This file owns the UI-facing interpretation of architecture flow and is the correct place to map product states into frontend journey paths.
@@ -81,6 +83,8 @@ Recommended UI-facing case states:
   The user is still answering required questions.
 - `ready_for_upload`
   The case has enough validated constraints for score upload and recommendation.
+- `queued`
+  The request has been accepted and is waiting in the asynchronous worker path before active processing starts.
 - `recommendation_ready`
   At least one score in the case has a recommendation set ready for user selection.
 - `completed`
@@ -96,7 +100,8 @@ stateDiagram-v2
     new --> interview_in_progress
     interview_in_progress --> ready_for_upload
     interview_in_progress --> archived
-    ready_for_upload --> parsing
+    ready_for_upload --> queued
+    queued --> parsing
     parsing --> recommendation_ready
     parsing --> failed
     recommendation_ready --> transforming
@@ -122,6 +127,7 @@ This file owns frontend-visible state meaning and the translation of backend lif
 
 - Upload is blocked for a new case until the interview has reached `ready_for_upload`.
 - Upload is allowed for later scores in the same active case without repeating the interview.
+- After upload acceptance, the frontend should read `GET /scores/{id}` until score processing leaves `uploaded`, `queued`, or `parsing` and reaches either recommendation readiness or failure.
 - If the user edits or resets the case, the case may return to `interview_in_progress`.
 
 ## Case Entry Rules
@@ -136,6 +142,7 @@ This file owns frontend-visible state meaning and the translation of backend lif
 The recommendation screen should distinguish:
 
 - `loading`
+- `queued`
 - `ready`
 - `stale`
 - `low_confidence`
@@ -155,6 +162,7 @@ Recommendation freshness rule:
 
 - If case constraints change after a recommendation set was generated, the existing recommendation set must be treated as stale.
 - A stale recommendation set must not be used for deterministic transformation without regeneration.
+- The backend should expose staleness through score or recommendation status snapshots instead of requiring the frontend to infer it locally from mutation history alone.
 - The frontend should clearly indicate that stale recommendations require a new recommendation request before selection can continue.
 
 ## Transformation UI States

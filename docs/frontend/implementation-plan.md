@@ -25,6 +25,7 @@ This document defines the planned frontend delivery stack for the MVP and explai
 - `Tailwind CSS` is preferred for rapid MVP delivery and explicit design-token control without forcing a heavyweight component system.
 - `react-hook-form` and `zod` fit the questionnaire flow and make validation rules explicit.
 - `TanStack Query` should own API-fetching and polling concerns so UI state does not become mixed with network state.
+- Long-running upload, parsing, recommendation, and transformation progress should be driven by dedicated read endpoints and query polling rather than by trusting mutation responses as durable state.
 - A global state library should not be introduced by default. Local component state and query state should be sufficient for the MVP.
 
 ## Frontend Delivery Diagram

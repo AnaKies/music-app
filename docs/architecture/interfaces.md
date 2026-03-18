@@ -26,6 +26,7 @@ flowchart LR
     FE --> C1[POST /cases]
     FE --> C2[GET /cases/{id}]
     FE --> S1[POST /scores]
+    FE --> S2[GET /scores/{id}]
     FE --> R1[POST /recommendations]
     FE --> T1[POST /transformations]
     FE --> T2[GET /transformations/{id}]
@@ -35,6 +36,7 @@ flowchart LR
     C1 --> CASE[Transposition Case Service]
     C2 --> CASE
     S1 --> PARSER[Score Parser]
+    S2 --> SCORESTATE[Score Processing Status]
     R1 --> AIR[AI Recommendation Service]
     T1 --> TX[Transformation Engine]
     T2 --> JOB[Processing Job State]
@@ -173,7 +175,7 @@ Upload an original score document.
 Contract shape:
 
 - input: multipart upload with MusicXML file and associated `transpositionCaseId`
-- output: `scoreDocumentId`, format, validation status
+- output: `scoreDocumentId`, format, accepted status, initial processing snapshot
 
 Failure behavior:
 
@@ -186,6 +188,40 @@ Backend API
 
 Evolution:
 Start with MusicXML-only support and extend through explicit format versioning later.
+
+Runtime note:
+Parsing and recommendation preparation may continue through an asynchronous worker path after upload acceptance. Frontend state should rely on the score read contract for durable progress visibility.
+
+### `GET /scores/{id}`
+
+Purpose:
+Retrieve the current status snapshot for an uploaded score document.
+
+Contract shape:
+
+- output: `scoreDocumentId`, processing status, active `transpositionCaseId`, recommendation snapshot summary, stale flag when applicable, warnings, failure details, available artifact references
+
+Recommended score processing status values:
+
+- `uploaded`
+- `queued`
+- `parsing`
+- `recommendation_pending`
+- `recommendation_ready`
+- `transforming`
+- `completed`
+- `failed`
+
+Failure behavior:
+
+- return not found for unknown score IDs
+- return typed failure metadata when the score flow has failed
+
+Ownership:
+Backend API
+
+Evolution:
+Additional score-summary metadata should be additive and must preserve the stable status meanings used by frontend polling.
 
 ### `POST /recommendations`
 
@@ -220,6 +256,9 @@ Backend API with AI recommendation service
 Evolution:
 The recommendation payload may grow with confidence, rationale, and difficulty metadata.
 
+Runtime note:
+Recommendation generation may be fulfilled through an asynchronous worker path as long as status visibility and result traceability remain consistent with the documented job model and the score-status read contract.
+
 ### `POST /transformations`
 
 Purpose:
@@ -243,6 +282,9 @@ Backend API
 Evolution:
 Additional execution options should be additive and must not change the meaning of stored recommendations.
 
+Runtime note:
+Transformation execution is expected to run through an asynchronous worker path rather than blocking the request-response cycle.
+
 ### `GET /transformations/{id}`
 
 Purpose:
@@ -262,6 +304,9 @@ Backend API
 
 Evolution:
 New metadata should be backward compatible and additive.
+
+Runtime note:
+This endpoint is the public read path for worker-driven job progress and final execution outcome.
 
 ### `GET /scores/{id}/download`
 
@@ -308,6 +353,33 @@ AI interview service
 
 Evolution:
 The case constraint schema must be explicitly versioned.
+
+### AI Context Contract
+
+Purpose:
+Define the structured context that backend modules must provide to AI services so AI behavior does not depend on implicit model memory alone.
+
+Contract shape:
+
+- input:
+  - `InterviewState v1` for ongoing interview turns
+  - `TranspositionCase v1` user-confirmed constraints
+  - `InferredConstraintSet v1` AI-derived but not yet fully trusted constraints when available
+  - `InstrumentProfile v1` and instrument knowledge fields relevant to range, transposition, and key suitability
+  - `CanonicalScoreSummary v1` for recommendation generation
+- output:
+  - schema-constrained interview updates or recommendation payloads only
+
+Failure behavior:
+
+- reject incomplete context for recommendation generation when required score or case inputs are missing
+- low-confidence AI outputs must remain explicitly marked and must not be promoted to confirmed constraints silently
+
+Ownership:
+Backend API and AI services jointly, with backend owning validation and payload assembly
+
+Evolution:
+The context contract should evolve through additive fields and explicit versioning rather than undocumented prompt changes.
 
 ### Parser to Canonical Score Model
 
@@ -358,7 +430,7 @@ Request recommended target ranges for a parsed score and active transposition ca
 
 Contract shape:
 
-- input: `CanonicalScore v1`, `TranspositionCaseConstraints v1`, instrument knowledge context
+- input: `CanonicalScore v1`, `TranspositionCaseConstraints v1`, `InferredConstraintSet v1` when available, instrument knowledge context
 - output: one or more recommended target ranges, confidence metadata, explanation metadata
 
 Failure behavior:

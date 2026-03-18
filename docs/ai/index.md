@@ -6,6 +6,8 @@ This directory contains the approved target AI state for the project.
 
 - [AI Agent](../../agents/AI.md): Behavior definition and engineering rules for the project-specific AI agent.
 - [AI Overview](./overview.md): High-level description of the current AI documentation scope and maintenance rules.
+- [AI Implementation Plan](./implementation-plan.md): Recommended MVP AI delivery model, structured-output approach, and implementation priorities.
+- [AI Capability Structure](./capability-structure.md): Planned capability split for interview, recommendation, evaluation, and AI runtime operations.
 
 ## Structure Rules
 

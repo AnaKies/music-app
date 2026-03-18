@@ -15,8 +15,10 @@ The MVP must make it possible to answer these questions:
 - which recommendation set was generated
 - which target range the user selected
 - which processing step is currently active
+- whether processing is queued in an asynchronous worker path or actively running
 - whether warnings or failures occurred
 - why a result should be considered trustworthy or uncertain
+- which durable read endpoint exposes the current score-processing snapshot for the frontend
 
 ## Observability Flow Diagram
 
@@ -53,6 +55,8 @@ Recommended MVP states:
 
 - `case_active`
 - `score_uploaded`
+- `uploaded`
+- `queued`
 - `parsing`
 - `recommendation_pending`
 - `recommendation_ready`
@@ -71,6 +75,7 @@ The system should persist enough metadata to identify:
 - which score was processed
 - which recommendation was used
 - what status the processing flow reached
+- whether the latest recommendation snapshot is stale because case constraints changed afterward
 - whether warnings or failures occurred
 - when processing started and ended
 
@@ -89,6 +94,28 @@ The MVP should store:
 - the score document reference used for recommendation
 
 This traceability is required so that a user can understand why a range was proposed and why one result may be more suitable than another.
+
+## Confidence And Fallback Policy
+
+Confidence must have operational meaning, not only descriptive value.
+
+Recommended MVP confidence outcomes:
+
+- `high`
+  Recommendation may be shown as normal and may include a primary suggestion.
+- `medium`
+  Recommendation may be shown, but the UI should expose supporting explanation and any relevant warnings more prominently.
+- `low`
+  Recommendation may be shown only with explicit low-confidence signaling and should encourage regeneration, case editing, or follow-up clarification before the user continues.
+- `blocked`
+  Recommendation generation should stop and return a typed failure or follow-up requirement instead of offering a misleading selection.
+
+Fallback expectations:
+
+- low-confidence interview interpretation should trigger follow-up questioning before confirmed constraints are updated
+- low-confidence recommendation output should never silently become a normal recommendation
+- blocked recommendation confidence should surface as `RECOMMENDATION_FAILED` or an equivalent typed follow-up-needed state
+- confidence policy should be traceable through stored recommendation metadata and visible UI state
 
 ## Warning Model
 

@@ -80,6 +80,34 @@ Managed as reference data.
 Operational notes:
 Profiles should be versioned carefully because transformation behavior depends on them.
 
+### InferredConstraintSet
+
+Purpose:
+Represent AI-derived constraints that are useful for recommendation or follow-up questioning but are not yet equivalent to confirmed user constraints.
+
+Key fields:
+
+- `id`
+- `transpositionCaseId`
+- `highestPlayableTone`
+- `lowestPlayableTone`
+- `restrictedTones`
+- `restrictedRegisters`
+- `difficultKeys`
+- `preferredKeys`
+- `comfortRangeMin`
+- `comfortRangeMax`
+- `confidence`
+- `source` such as `ai_inference`
+- `createdAt`
+
+Lifecycle:
+Created or updated during interview processing when the AI infers likely constraints from incomplete user input or structured instrument context.
+May be replaced, confirmed into the main case fields, or discarded as the interview progresses.
+
+Operational notes:
+This entity must remain distinct from both generic instrument knowledge and confirmed user-specific case constraints.
+
 ### TranspositionCase
 
 Purpose:
@@ -107,6 +135,7 @@ Created during the interview flow and reused across multiple uploads until the u
 
 Operational notes:
 This case captures the playable reality of a specific user and instrument setup, not just the general capability of an instrument.
+Confirmed case fields should remain distinguishable from AI-inferred but not yet confirmed constraints.
 
 ### TransformationRequest
 
@@ -199,6 +228,7 @@ Confidence should be used only as advisory metadata, not as the only quality sig
 erDiagram
     ScoreDocument ||--o{ CanonicalScore : source_for
     InstrumentProfile ||--o{ TranspositionCase : baseline_for
+    TranspositionCase ||--o| InferredConstraintSet : may_include
     ScoreDocument ||--o{ RangeRecommendation : analyzed_as
     TranspositionCase ||--o{ ScoreDocument : groups
     TranspositionCase ||--o{ RangeRecommendation : guides
@@ -214,7 +244,7 @@ Diagram purpose:
 Show the core persistence entities and the relationships that connect reusable cases, uploaded scores, recommendations, execution requests, and generated results.
 
 What to read from it:
-The model separates reusable user/instrument context from uploaded files, AI recommendation outputs, execution tracking, and final artifacts so each lifecycle can evolve independently.
+The model separates reusable user/instrument context, AI-inferred transient constraints, uploaded files, recommendation outputs, execution tracking, and final artifacts so each lifecycle can evolve independently.
 
 Why it belongs here:
 This file owns the persistent entities, their lifecycle role, and their relationship structure.
@@ -227,3 +257,4 @@ This file owns the persistent entities, their lifecycle role, and their relation
 - AI-generated recommendations must remain attributable through recommendation and processing metadata.
 - Transposition case constraints must persist across multiple uploads until the user resets or replaces the case.
 - User-specific case constraints must be stored separately from generic instrument profiles.
+- AI-inferred constraints must be stored separately from confirmed case constraints.

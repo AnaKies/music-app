@@ -77,6 +77,7 @@ This file owns the internal frontend structure and the implementation shape of t
 - Local component state should handle transient view behavior such as modal visibility or local selection.
 - `react-hook-form` should own interview-form state and validation lifecycle.
 - `TanStack Query` should own backend-derived state such as cases, recommendations, transformations, and polling.
+- Long-running upload and processing states should be read from dedicated status queries such as `GET /cases/{id}`, `GET /scores/{id}`, and `GET /transformations/{id}` instead of being inferred from mutation success alone.
 - Recommendation freshness must be derived from case-constraint changes and surfaced as explicit UI state.
 - Global state should be introduced only if cross-feature coordination becomes unmanageable with local state and query caches.
 
@@ -85,6 +86,7 @@ This file owns the internal frontend structure and the implementation shape of t
 - Case entry screen: show the default suggested case, other reusable cases, and case-creation entry
 - Interview screen: render question objects and submit structured answers
 - Upload screen: block upload until the selected case is ready and show parsing status
+- Upload screen: poll score-status snapshots after upload acceptance until parsing and recommendation readiness become visible
 - Recommendation screen: show primary and secondary recommendations, warnings, and stale state
 - Transformation screen: show progress, retry path, and failure messaging
 - Result screen: expose MusicXML download and optional print handoff

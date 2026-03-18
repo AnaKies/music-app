@@ -14,6 +14,8 @@ This document defines the planned Python service structure for the MVP backend a
 - `api`: route handlers and HTTP boundary logic
 - `schemas`: request, response, and internal transfer models
 - `services`: application-level orchestration for interviews, cases, parsing, recommendations, transformations, exports, and downloads
+- `ai`: provider adapters, structured AI-call boundaries, and AI-context assembly helpers
+- `readmodels`: frontend-facing status and summary assembly for cases, scores, recommendations, and transformations
 - `repositories`: persistence access for metadata entities
 - `workers`: background-job entry points and job handlers
 - `storage`: object-storage integration for score artifacts
@@ -28,6 +30,8 @@ src/
     api/
     schemas/
     services/
+    ai/
+    readmodels/
     repositories/
     workers/
     storage/
@@ -41,6 +45,10 @@ src/
 flowchart TD
     ROUTES[FastAPI Routes] --> SCHEMAS[Pydantic Schemas]
     ROUTES --> SERVICES[Service Layer]
+    SERVICES --> AICTX[AI Context Assembly]
+    AICTX --> AICALL[AI Provider Adapter]
+    ROUTES --> READ[Read Models]
+    READ --> REPOS
     SERVICES --> REPOS[Repository Layer]
     SERVICES --> STORAGE[Storage Adapter]
     SERVICES --> WORKERS[Job Dispatch]
@@ -48,6 +56,7 @@ flowchart TD
     WORKERS --> JOBRUN[Worker Handlers]
     JOBRUN --> REPOS
     JOBRUN --> STORAGE
+    JOBRUN --> AICTX
     JOBRUN --> DOMAIN[Parsing and Transformation Logic]
 ```
 
@@ -55,7 +64,7 @@ Diagram purpose:
 Show the planned implementation-level backend layering for the Python service and how request handling, service orchestration, persistence, storage, and job execution are separated.
 
 What to read from it:
-Route handlers should remain thin, services should own workflow coordination, repositories should isolate database access, and workers should execute long-running processing outside the request path.
+Route handlers should remain thin, services should own workflow coordination, AI integration should stay behind explicit context-assembly and provider-adapter boundaries, repositories should isolate database access, and workers should execute long-running processing outside the request path.
 
 Why it belongs here:
 This file owns the internal backend application shape and how the approved architecture is translated into Python packages and service layers.
@@ -67,6 +76,9 @@ This file owns the internal backend application shape and how the approved archi
 - `services.cases` maps to the `Transposition Case Service`.
 - `services.scores` and domain parsing logic map to the `Score Parser` path.
 - `services.recommendations` coordinates backend-facing interaction with the AI recommendation path.
+- `ai.context` assembles the `AI Context Contract` payloads required by interview and recommendation calls.
+- `ai.providers` isolates model-provider-specific logic and schema-constrained AI calls.
+- `readmodels.status` assembles frontend-facing score, recommendation, and transformation status snapshots from persistent metadata.
 - `services.transformations` and `workers` map to the `Transformation Engine` execution path.
 - `services.exports` and `storage` map to the `Export Service` and artifact persistence boundary.
 
@@ -74,7 +86,9 @@ This file owns the internal backend application shape and how the approved archi
 
 - Request-state validation should happen at the schema and service boundary, not inside route bodies.
 - Processing-job state should be written to persistent metadata storage so retries and status reads remain observable.
+- Frontend polling should read dedicated status resources such as case, score, and transformation snapshots instead of inferring long-running state from mutation responses.
 - Long-running parsing, recommendation generation, transformation, and export should run in worker processes rather than blocking the request thread.
+- Case edits that change confirmed constraints should mark affected recommendation snapshots as stale in persisted read models.
 - Warning and failure metadata should be persisted in typed form so the frontend can render them without log scraping.
 
 ## Testing Priorities
