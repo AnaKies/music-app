@@ -101,6 +101,7 @@ class InterviewAdvanceResponse(BaseModel):
     nextQuestion: Optional[InterviewQuestion] = None
     progress: InterviewProgress
     lowConfidence: bool = False
+    collectedAnswers: list[InterviewRecordedAnswer] = Field(default_factory=list)
     derivedCaseSummary: InterviewDerivedCaseSummary
 
 

@@ -58,6 +58,7 @@ def test_post_interviews_starts_session_and_returns_first_question():
         assert payload["status"] == "in_progress"
         assert payload["nextQuestion"]["id"] == "instrument_identity"
         assert payload["nextQuestion"]["type"] == "single_select"
+        assert payload["collectedAnswers"] == []
         assert payload["progress"] == {
             "currentStep": 1,
             "totalSteps": 4,
@@ -96,6 +97,7 @@ def test_post_interviews_continues_session_and_can_trigger_low_confidence_follow
 
             assert instrument.status_code == 200
             assert instrument.json()["nextQuestion"]["id"] == "challenge_areas"
+            assert instrument.json()["collectedAnswers"][0]["value"]["selectedOption"] == "trumpet-bb"
 
             challenge = client.post(
                 "/interviews",
@@ -138,6 +140,41 @@ def test_post_interviews_continues_session_and_can_trigger_low_confidence_follow
         assert payload["status"] == "awaiting_follow_up"
         assert payload["lowConfidence"] is True
         assert payload["nextQuestion"]["id"] == "additional_context_follow_up"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_interview_answers_update_the_case_identity_for_later_case_lists():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            instrument = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "alto-sax-eb"},
+                },
+            )
+
+        assert instrument.status_code == 200
+        persisted_case = session.query(TranspositionCase).filter(TranspositionCase.id == "case-f2-1").first()
+        assert persisted_case is not None
+        assert persisted_case.instrument_identity == "alto-sax-eb"
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()
@@ -249,6 +286,7 @@ def test_post_interviews_reuses_completed_session_instead_of_silently_starting_a
         assert resumed.json()["status"] == "completed"
         assert resumed.json()["interviewId"] == interview_id
         assert resumed.json()["nextQuestion"] is None
+        assert len(resumed.json()["collectedAnswers"]) == 4
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()

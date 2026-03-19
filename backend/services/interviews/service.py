@@ -200,6 +200,25 @@ def _build_record(question: InterviewQuestion, answer: InterviewAnswerValue, low
     }
 
 
+def _apply_answer_to_case(case: TranspositionCase, question: InterviewQuestion, answer: InterviewAnswerValue) -> None:
+    if question.id == "instrument_identity" and answer.selectedOption:
+        case.instrument_identity = answer.selectedOption
+        return
+
+    if question.id == "challenge_areas":
+        selected_options = answer.selectedOptions or []
+        case.restricted_registers = [
+            value for value in selected_options if value in ("high_register", "low_register")
+        ]
+        case.difficult_keys = ["needs_clarification"] if "difficult_keys" in selected_options else []
+        return
+
+    if question.id == "comfort_range" and answer.noteRange is not None:
+        case.comfort_range_min = answer.noteRange.min
+        case.comfort_range_max = answer.noteRange.max
+        return
+
+
 def _next_question_id(current_question_id: str) -> Optional[str]:
     if current_question_id not in QUESTION_ORDER:
         return None
@@ -229,6 +248,7 @@ class InterviewService:
                 .first()
             )
             if existing_session is not None and existing_session.status != InterviewSessionStatus.COMPLETED:
+                recorded_answers = _recorded_answers(existing_session)
                 current_question = definitions.get(existing_session.current_question_id or QUESTION_ORDER[0])
                 return InterviewAdvanceResponse(
                     interviewId=existing_session.id,
@@ -237,10 +257,12 @@ class InterviewService:
                     nextQuestion=current_question,
                     progress=_progress_for(existing_session.current_question_id, existing_session.status),
                     lowConfidence=bool((existing_session.low_confidence or {}).get("active")),
-                    derivedCaseSummary=_build_summary(case, _recorded_answers(existing_session)),
+                    collectedAnswers=recorded_answers,
+                    derivedCaseSummary=_build_summary(case, recorded_answers),
                 )
 
             if existing_session is not None and existing_session.status == InterviewSessionStatus.COMPLETED:
+                recorded_answers = _recorded_answers(existing_session)
                 return InterviewAdvanceResponse(
                     interviewId=existing_session.id,
                     caseId=payload.caseId,
@@ -248,7 +270,8 @@ class InterviewService:
                     nextQuestion=None,
                     progress=_progress_for(None, existing_session.status),
                     lowConfidence=False,
-                    derivedCaseSummary=_build_summary(case, _recorded_answers(existing_session)),
+                    collectedAnswers=recorded_answers,
+                    derivedCaseSummary=_build_summary(case, recorded_answers),
                 )
 
             session_model = InterviewSession(
@@ -272,6 +295,7 @@ class InterviewService:
                 nextQuestion=definitions[QUESTION_ORDER[0]],
                 progress=_progress_for(QUESTION_ORDER[0], session_model.status),
                 lowConfidence=False,
+                collectedAnswers=[],
                 derivedCaseSummary=_build_summary(case, []),
             )
 
@@ -308,6 +332,7 @@ class InterviewService:
 
         answers.append(_build_record(current_question, payload.answer, low_confidence_flag=low_confidence_flag))
         session_model.answers = answers
+        _apply_answer_to_case(case, current_question, payload.answer)
 
         if low_confidence_flag:
             session_model.status = InterviewSessionStatus.AWAITING_FOLLOW_UP
@@ -343,6 +368,7 @@ class InterviewService:
             nextQuestion=next_question,
             progress=_progress_for(session_model.current_question_id, session_model.status),
             lowConfidence=bool((session_model.low_confidence or {}).get("active")),
+            collectedAnswers=_recorded_answers(session_model),
             derivedCaseSummary=derived_summary,
         )
 
