@@ -492,8 +492,249 @@ select {
   cursor: pointer;
 }
 
+.new-case-actions__button--primary {
+  background: var(--accent);
+  color: #fffaf5;
+}
+
 .new-case-actions__button:hover {
   background: #1f1914;
+}
+
+.new-case-actions__button--primary:hover {
+  background: #8f4b22;
+}
+
+.new-case-actions--inline {
+  margin-top: 18px;
+}
+
+.interview-page {
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 56px 0 72px;
+}
+
+.interview-hero {
+  margin-bottom: 28px;
+}
+
+.interview-hero__eyebrow,
+.interview-progress__label,
+.interview-question__label,
+.interview-summary__term {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.interview-hero__title {
+  margin: 0 0 12px;
+  max-width: 14ch;
+  font-size: clamp(2.2rem, 4vw, 4.2rem);
+  line-height: 0.98;
+}
+
+.interview-hero__description {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.interview-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+  gap: 18px;
+}
+
+.interview-progress {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.interview-progress__meter {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(95, 75, 55, 0.12);
+  overflow: hidden;
+}
+
+.interview-progress__meter-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(165, 93, 49, 0.92), rgba(217, 151, 110, 0.84));
+}
+
+.interview-question {
+  display: grid;
+  gap: 18px;
+}
+
+.interview-question__title,
+.interview-complete__title {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.interview-question__help,
+.interview-follow-up__text,
+.interview-complete__text,
+.interview-summary__value,
+.interview-option__description {
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.interview-option-list {
+  display: grid;
+  gap: 12px;
+}
+
+.interview-option {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(95, 75, 55, 0.14);
+  background: rgba(255, 255, 255, 0.74);
+  padding: 16px 18px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.interview-option--selected {
+  border-color: rgba(165, 93, 49, 0.45);
+  background: rgba(165, 93, 49, 0.12);
+}
+
+.interview-option__marker {
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.interview-option__label {
+  display: block;
+  font-weight: 700;
+}
+
+.interview-option__description {
+  display: block;
+  margin-top: 4px;
+}
+
+.interview-range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.interview-field {
+  display: grid;
+  gap: 8px;
+}
+
+.interview-field__label {
+  font-weight: 700;
+}
+
+.interview-field__input,
+.interview-field__textarea {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid rgba(95, 75, 55, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 14px 16px;
+  color: var(--text-primary);
+}
+
+.interview-field__textarea {
+  min-height: 132px;
+  resize: vertical;
+}
+
+.interview-follow-up {
+  display: flex;
+  gap: 12px;
+  border-radius: 18px;
+  background: rgba(165, 93, 49, 0.11);
+  border: 1px solid rgba(165, 93, 49, 0.2);
+  padding: 14px 16px;
+}
+
+.interview-follow-up__icon,
+.interview-complete__icon {
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.interview-follow-up__title {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.interview-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.interview-actions__validation {
+  margin: 0;
+  color: #8f3324;
+  font-weight: 600;
+}
+
+.interview-actions__submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(165, 93, 49, 0.4);
+  background: var(--accent);
+  color: #fffaf5;
+  padding: 12px 18px;
+  cursor: pointer;
+}
+
+.interview-actions__submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.interview-summary {
+  display: grid;
+  gap: 18px;
+}
+
+.interview-summary__term {
+  display: block;
+}
+
+.interview-summary__value {
+  display: block;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+}
+
+.interview-complete {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 22px;
+  border-radius: 18px;
+  background: rgba(82, 145, 98, 0.12);
+  border: 1px solid rgba(82, 145, 98, 0.2);
 }
 
 @keyframes spin {
@@ -518,5 +759,17 @@ select {
   .new-case-page {
     width: min(100% - 28px, 960px);
     padding-top: 32px;
+  }
+
+  .interview-page {
+    width: min(100% - 28px, 1120px);
+    padding-top: 32px;
+  }
+}
+
+@media (max-width: 880px) {
+  .interview-layout,
+  .interview-range-grid {
+    grid-template-columns: 1fr;
   }
 }

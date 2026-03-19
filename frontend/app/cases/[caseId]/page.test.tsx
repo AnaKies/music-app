@@ -57,4 +57,58 @@ describe('CaseDetailPage', () => {
     expect(screen.getByText('trumpet-bb')).toBeInTheDocument();
     expect(screen.getByText('Status: ready_for_upload')).toBeInTheDocument();
   });
+
+  it('offers an interview action for in-progress cases', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'interview_in_progress',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 0,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: null,
+        comfort_range_max: null,
+      },
+    });
+
+    render(<CaseDetailPage />);
+
+    expect(await screen.findByRole('link', { name: /continue interview/i })).toHaveAttribute(
+      'href',
+      '/interview?caseId=existing-case-1'
+    );
+  });
+
+  it('does not offer an interview action for completed cases', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'completed',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: null,
+        comfort_range_max: null,
+      },
+    });
+
+    render(<CaseDetailPage />);
+
+    await screen.findByText('Case overview');
+    expect(screen.queryByRole('link', { name: /interview/i })).not.toBeInTheDocument();
+  });
 });

@@ -105,6 +105,16 @@ export default function CaseDetailPage() {
               </div>
             </div>
           </article>
+          {(caseDetail.status === 'new' || caseDetail.status === 'interview_in_progress') ? (
+            <div className="new-case-actions new-case-actions--inline">
+              <Link
+                href={`/interview?caseId=${caseId}`}
+                className="new-case-actions__button new-case-actions__button--primary"
+              >
+                <span>{caseDetail.status === 'new' ? 'Begin Interview' : 'Continue Interview'}</span>
+              </Link>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

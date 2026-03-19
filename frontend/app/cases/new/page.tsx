@@ -1,7 +1,12 @@
+'use client';
+
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
 
 export default function NewCaseFlowPage() {
+  const searchParams = useSearchParams();
+  const caseId = searchParams.get('caseId');
   const steps = [
     {
       title: 'Create the case shell',
@@ -66,6 +71,14 @@ export default function NewCaseFlowPage() {
       </section>
 
       <div className="new-case-actions">
+        {caseId ? (
+          <Link
+            href={`/interview?caseId=${caseId}`}
+            className="new-case-actions__button new-case-actions__button--primary"
+          >
+            <span>Start Interview</span>
+          </Link>
+        ) : null}
         <Link 
           href="/" 
           className="new-case-actions__button"
