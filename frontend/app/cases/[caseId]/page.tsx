@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Clock, Loader2, Music } from 'lucide-react';
 
 import { ApiError, casesApi } from '@/shared/api/cases';
+import { scoresApi } from '@/shared/api/scores';
 import type { CaseDetail } from '@/shared/types/cases';
+import type { ScoreUploadResponse } from '@/shared/types/scores';
 
 export default function CaseDetailPage() {
   const params = useParams<{ caseId: string }>();
@@ -15,6 +17,9 @@ export default function CaseDetailPage() {
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<ScoreUploadResponse | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -57,6 +62,29 @@ export default function CaseDetailPage() {
       isMounted = false;
     };
   }, [caseId]);
+
+  async function handleUpload() {
+    if (!caseDetail || !selectedFile) {
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setError(null);
+      setUploadResult(await scoresApi.uploadScore(caseDetail.id, selectedFile));
+      const refreshedCase = await casesApi.getCase(caseDetail.id);
+      setCaseDetail(refreshedCase);
+      setSelectedFile(null);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.message);
+      } else {
+        setError('Could not upload the selected score. Please try again.');
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   return (
     <main className="new-case-page">
@@ -113,6 +141,45 @@ export default function CaseDetailPage() {
               >
                 <span>{caseDetail.status === 'new' ? 'Begin Interview' : 'Continue Interview'}</span>
               </Link>
+            </div>
+          ) : null}
+          {caseDetail.status === 'ready_for_upload' ? (
+            <div className="upload-panel">
+              <h3 className="case-entry-section__title">Upload original score</h3>
+              <p className="case-card__text">
+                Upload a MusicXML file to start the score-processing flow for this case.
+              </p>
+              <label className="interview-field">
+                <span className="interview-field__label">MusicXML file</span>
+                <input
+                  className="interview-field__input"
+                  type="file"
+                  accept=".musicxml,.xml,text/xml,application/xml"
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    setSelectedFile(event.target.files?.[0] ?? null)
+                  }
+                />
+              </label>
+              <div className="new-case-actions new-case-actions--inline">
+                <button
+                  type="button"
+                  className="new-case-actions__button new-case-actions__button--primary"
+                  disabled={isUploading || selectedFile === null}
+                  onClick={() => void handleUpload()}
+                >
+                  <span>{isUploading ? 'Uploading...' : 'Upload MusicXML'}</span>
+                </button>
+              </div>
+              {uploadResult ? (
+                <div className="interview-follow-up">
+                  <div>
+                    <p className="interview-follow-up__title">Upload accepted</p>
+                    <p className="interview-follow-up__text">
+                      {uploadResult.originalFilename} was accepted with status {uploadResult.acceptedStatus}.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>

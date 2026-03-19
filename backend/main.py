@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database import engine, Base
-from backend.api.routes import cases, interviews
+from backend.api.routes import cases, interviews, scores
 from backend.domain.interviews.models import InterviewSession  # noqa: F401
+from backend.domain.scores.models import ScoreDocument  # noqa: F401
 
 # Tabellen erstellen (im MVP bei jedem Start zur Sicherheit, sqlite)
 Base.metadata.create_all(bind=engine)
@@ -23,6 +24,7 @@ app.add_middleware(
 # Routen einbinden
 app.include_router(cases.router)
 app.include_router(interviews.router)
+app.include_router(scores.router)
 
 @app.get("/health")
 def health_check():
