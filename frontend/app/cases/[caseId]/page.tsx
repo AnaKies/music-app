@@ -173,10 +173,25 @@ export default function CaseDetailPage() {
               {uploadResult ? (
                 <div className="interview-follow-up">
                   <div>
-                    <p className="interview-follow-up__title">Upload accepted</p>
-                    <p className="interview-follow-up__text">
-                      {uploadResult.originalFilename} was accepted with status {uploadResult.acceptedStatus}.
+                    <p className="interview-follow-up__title">
+                      {uploadResult.acceptedStatus === 'parse_failed'
+                        ? 'Score parsing failed'
+                        : 'Score parsed successfully'}
                     </p>
+                    <p className="interview-follow-up__text">
+                      {uploadResult.originalFilename} finished with status {uploadResult.acceptedStatus}.
+                    </p>
+                    {uploadResult.initialProcessingSnapshot.canonicalScoreSummary ? (
+                      <p className="interview-follow-up__text">
+                        Parsed {uploadResult.initialProcessingSnapshot.canonicalScoreSummary.partCount} part(s) across{' '}
+                        {uploadResult.initialProcessingSnapshot.canonicalScoreSummary.measureCount} measure(s).
+                      </p>
+                    ) : null}
+                    {uploadResult.initialProcessingSnapshot.parseFailureType ? (
+                      <p className="interview-follow-up__text">
+                        Failure type: {uploadResult.initialProcessingSnapshot.parseFailureType}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               ) : null}

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import Base, engine, get_db
 from backend.domain.cases.models import TranspositionCase
-from backend.domain.scores.models import ScoreDocument  # noqa: F401
+from backend.domain.scores.models import CanonicalScore, ScoreDocument
 from backend.main import app
 
 
@@ -50,16 +50,51 @@ def test_post_scores_accepts_valid_musicxml_for_ready_case():
         response = client.post(
             "/scores",
             data={"transpositionCaseId": "case-ready"},
-            files={"file": ("example.musicxml", BytesIO(b"<score-partwise version='4.0'></score-partwise>"), "application/xml")},
+            files={
+                "file": (
+                    "example.musicxml",
+                    BytesIO(
+                        b"""
+                        <score-partwise version='4.0'>
+                          <part-list>
+                            <score-part id='P1'><part-name>Flute</part-name></score-part>
+                          </part-list>
+                          <part id='P1'>
+                            <measure number='1'>
+                              <note><rest/><duration>4</duration></note>
+                            </measure>
+                          </part>
+                        </score-partwise>
+                        """
+                    ),
+                    "application/xml",
+                )
+            },
         )
 
       assert response.status_code == 202
       payload = response.json()
       assert payload["format"] == "musicxml"
-      assert payload["acceptedStatus"] == "uploaded"
-      assert payload["initialProcessingSnapshot"]["processingStatus"] == "uploaded"
+      assert payload["acceptedStatus"] == "parsed"
+      assert payload["initialProcessingSnapshot"]["processingStatus"] == "parsed"
+      assert payload["initialProcessingSnapshot"]["canonicalScoreSummary"] == {
+          "schemaVersion": "v1",
+          "title": None,
+          "partCount": 1,
+          "measureCount": 1,
+          "noteCount": 0,
+          "restCount": 1,
+          "parts": [{"partId": "P1", "name": "Flute"}],
+      }
       persisted_case = session.query(TranspositionCase).filter(TranspositionCase.id == "case-ready").first()
+      persisted_score = session.query(ScoreDocument).filter(ScoreDocument.id == payload["scoreDocumentId"]).first()
+      persisted_canonical = session.query(CanonicalScore).filter(CanonicalScore.score_document_id == payload["scoreDocumentId"]).first()
       assert persisted_case is not None
+      assert persisted_score is not None
+      assert persisted_score.processing_status.value == "parsed"
+      assert persisted_score.parse_failure_type is None
+      assert persisted_canonical is not None
+      assert persisted_canonical.parts == [{"id": "P1", "name": "Flute"}]
       assert persisted_case.score_count == 1
     finally:
       app.dependency_overrides.clear()
@@ -142,6 +177,48 @@ def test_post_scores_rejects_oversized_upload():
       assert response.json() == {
           "detail": "The uploaded file exceeds the maximum allowed size.",
       }
+    finally:
+      app.dependency_overrides.clear()
+      transaction.rollback()
+      session.close()
+      connection.close()
+
+
+def test_post_scores_persists_typed_parse_failure_for_malformed_musicxml():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-ready", "ready_for_upload")
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+      with TestClient(app) as client:
+        response = client.post(
+            "/scores",
+            data={"transpositionCaseId": "case-ready"},
+            files={
+                "file": (
+                    "broken.musicxml",
+                    BytesIO(b"<score-partwise version='4.0'><part-list><score-part id='P1'><part-name>Flute</part-name></score-part></part-list>"),
+                    "application/xml",
+                )
+            },
+        )
+
+      assert response.status_code == 202
+      payload = response.json()
+      assert payload["acceptedStatus"] == "parse_failed"
+      assert payload["initialProcessingSnapshot"]["processingStatus"] == "parse_failed"
+      assert payload["initialProcessingSnapshot"]["parseFailureType"] == "invalid_xml"
+      assert payload["initialProcessingSnapshot"]["canonicalScoreSummary"] is None
+
+      persisted_score = session.query(ScoreDocument).filter(ScoreDocument.id == payload["scoreDocumentId"]).first()
+      persisted_canonical = session.query(CanonicalScore).filter(CanonicalScore.score_document_id == payload["scoreDocumentId"]).first()
+      assert persisted_score is not None
+      assert persisted_score.processing_status.value == "parse_failed"
+      assert persisted_score.parse_failure_type.value == "invalid_xml"
+      assert persisted_canonical is None
     finally:
       app.dependency_overrides.clear()
       transaction.rollback()

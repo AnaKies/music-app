@@ -6,13 +6,16 @@ from sqlalchemy.orm import Session
 
 from backend.api.schemas.cases import CaseStatus
 from backend.api.schemas.scores import (
+    CanonicalScorePartSummary,
+    CanonicalScoreSummary,
     ScoreFormat,
     ScoreProcessingSnapshot,
     ScoreProcessingStatus,
     ScoreUploadResponse,
 )
 from backend.domain.cases.models import TranspositionCase
-from backend.domain.scores.models import ScoreDocument
+from backend.domain.scores.models import CanonicalScore, ScoreDocument
+from backend.services.scores.parser import parse_musicxml
 
 MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
 ALLOWED_SUFFIXES = {".musicxml", ".xml"}
@@ -71,7 +74,50 @@ def accept_score_upload(
     db.add(score_document)
     db.commit()
     db.refresh(score_document)
+
+    parse_result = parse_musicxml(content)
+    canonical_summary = None
+    parse_failure_type = None
+
+    if parse_result.failure is not None:
+        score_document.processing_status = ScoreProcessingStatus.PARSE_FAILED
+        score_document.parse_failure_type = parse_result.failure.failure_type
+        parse_failure_type = parse_result.failure.failure_type
+    elif parse_result.canonical_score is not None:
+        score_document.processing_status = ScoreProcessingStatus.PARSED
+        score_document.parse_failure_type = None
+        db.add(
+            CanonicalScore(
+                score_document_id=score_document.id,
+                schema_version=parse_result.canonical_score.schema_version,
+                title=parse_result.canonical_score.title,
+                parts=parse_result.canonical_score.parts,
+                measure_count=parse_result.canonical_score.measure_count,
+                note_count=parse_result.canonical_score.note_count,
+                rest_count=parse_result.canonical_score.rest_count,
+            )
+        )
+
+    db.commit()
+    db.refresh(score_document)
     db.refresh(case)
+
+    if score_document.canonical_score is not None:
+        canonical_summary = CanonicalScoreSummary(
+            schemaVersion=score_document.canonical_score.schema_version,
+            title=score_document.canonical_score.title,
+            partCount=len(score_document.canonical_score.parts or []),
+            measureCount=score_document.canonical_score.measure_count,
+            noteCount=score_document.canonical_score.note_count,
+            restCount=score_document.canonical_score.rest_count,
+            parts=[
+                CanonicalScorePartSummary(
+                    partId=part.get("id", ""),
+                    name=part.get("name", ""),
+                )
+                for part in (score_document.canonical_score.parts or [])
+            ],
+        )
 
     accepted_at = score_document.created_at or datetime.now(timezone.utc)
     return ScoreUploadResponse(
@@ -84,5 +130,7 @@ def accept_score_upload(
             transpositionCaseId=transposition_case_id,
             processingStatus=score_document.processing_status,
             acceptedAt=accepted_at,
+            parseFailureType=parse_failure_type,
+            canonicalScoreSummary=canonical_summary,
         ),
     )
