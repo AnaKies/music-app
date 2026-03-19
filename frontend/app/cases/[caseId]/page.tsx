@@ -6,8 +6,10 @@ import { useParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Clock, Loader2, Music } from 'lucide-react';
 
 import { ApiError, casesApi } from '@/shared/api/cases';
+import { recommendationsApi } from '@/shared/api/recommendations';
 import { scoresApi } from '@/shared/api/scores';
 import type { CaseDetail } from '@/shared/types/cases';
+import type { RecommendationItem, RecommendationResponse } from '@/shared/types/recommendations';
 import type { ScoreUploadResponse } from '@/shared/types/scores';
 
 export default function CaseDetailPage() {
@@ -20,6 +22,9 @@ export default function CaseDetailPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<ScoreUploadResponse | null>(null);
+  const [recommendationResult, setRecommendationResult] = useState<RecommendationResponse | null>(null);
+  const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
+  const [selectedRecommendationId, setSelectedRecommendationId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -74,6 +79,8 @@ export default function CaseDetailPage() {
       setUploadResult(await scoresApi.uploadScore(caseDetail.id, selectedFile));
       const refreshedCase = await casesApi.getCase(caseDetail.id);
       setCaseDetail(refreshedCase);
+      setRecommendationResult(null);
+      setSelectedRecommendationId(null);
       setSelectedFile(null);
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
@@ -84,6 +91,32 @@ export default function CaseDetailPage() {
     } finally {
       setIsUploading(false);
     }
+  }
+
+  async function handleGenerateRecommendations() {
+    if (!caseDetail || !uploadResult) {
+      return;
+    }
+
+    try {
+      setIsGeneratingRecommendations(true);
+      setError(null);
+      const result = await recommendationsApi.generateRecommendations(caseDetail.id, uploadResult.scoreDocumentId);
+      setRecommendationResult(result);
+      setSelectedRecommendationId(null);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.message);
+      } else {
+        setError('Could not generate recommendations. Please try again.');
+      }
+    } finally {
+      setIsGeneratingRecommendations(false);
+    }
+  }
+
+  function handleSelectRecommendation(item: RecommendationItem) {
+    setSelectedRecommendationId(item.recommendationId);
   }
 
   return (
@@ -194,6 +227,89 @@ export default function CaseDetailPage() {
                     ) : null}
                   </div>
                 </div>
+              ) : null}
+              {uploadResult?.acceptedStatus === 'parsed' ? (
+                <div className="new-case-actions new-case-actions--inline">
+                  <button
+                    type="button"
+                    className="new-case-actions__button new-case-actions__button--primary"
+                    disabled={isGeneratingRecommendations}
+                    onClick={() => void handleGenerateRecommendations()}
+                  >
+                    <span>{isGeneratingRecommendations ? 'Generating...' : 'Load Recommendations'}</span>
+                  </button>
+                </div>
+              ) : null}
+              {recommendationResult ? (
+                <section className="recommendation-workspace" aria-label="Recommendation review">
+                  <div className="recommendation-workspace__header">
+                    <div>
+                      <p className="new-case-hero__eyebrow">F8 · Recommendation Review</p>
+                      <h3 className="case-entry-section__title">Review and choose a recommendation</h3>
+                    </div>
+                  </div>
+                  {recommendationResult.status === 'blocked' && recommendationResult.failure ? (
+                    <div className="case-entry-error">
+                      <AlertCircle className="case-entry-error__icon" />
+                      <div className="case-entry-error__content">
+                        <p className="case-entry-error__text">{recommendationResult.failure.safeSummary}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="recommendation-grid">
+                    {recommendationResult.recommendations.map((item) => (
+                      <article
+                        key={item.recommendationId}
+                        className={`recommendation-card ${item.isPrimary ? 'recommendation-card--primary' : 'recommendation-card--secondary'} ${
+                          selectedRecommendationId === item.recommendationId ? 'recommendation-card--selected' : ''
+                        }`}
+                      >
+                        <div className="recommendation-card__header">
+                          <div>
+                            <p className="recommendation-card__eyebrow">
+                              {item.isPrimary ? 'Primary option' : 'Secondary option'}
+                            </p>
+                            <h4 className="recommendation-card__title">{item.label}</h4>
+                          </div>
+                          <span className={`recommendation-card__confidence recommendation-card__confidence--${item.confidence}`}>
+                            {item.confidence}
+                          </span>
+                        </div>
+                        <p className="recommendation-card__range">
+                          {item.targetRange.min} to {item.targetRange.max}
+                        </p>
+                        <p className="recommendation-card__reason">{item.summaryReason}</p>
+                        {item.recommendedKey ? (
+                          <p className="recommendation-card__meta">Recommended key: {item.recommendedKey}</p>
+                        ) : null}
+                        {item.warnings.length ? (
+                          <ul className="recommendation-card__warnings">
+                            {item.warnings.map((warning) => (
+                              <li
+                                key={`${item.recommendationId}-${warning.code}`}
+                                className={`recommendation-card__warning recommendation-card__warning--${warning.severity}`}
+                              >
+                                {warning.message}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="new-case-actions__button"
+                          onClick={() => handleSelectRecommendation(item)}
+                        >
+                          <span>{selectedRecommendationId === item.recommendationId ? 'Selected' : 'Select recommendation'}</span>
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                  {selectedRecommendationId ? (
+                    <p className="recommendation-workspace__selection">
+                      A recommendation is selected for the next transformation step. No automatic transformation has started.
+                    </p>
+                  ) : null}
+                </section>
               ) : null}
             </div>
           ) : null}

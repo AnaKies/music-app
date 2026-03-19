@@ -419,6 +419,138 @@ select {
   flex-shrink: 0;
 }
 
+.recommendation-workspace {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.recommendation-workspace__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.recommendation-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.recommendation-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.25rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(14, 31, 24, 0.14);
+  background: rgba(255, 252, 245, 0.96);
+}
+
+.recommendation-card--primary {
+  border-color: rgba(20, 85, 55, 0.28);
+  box-shadow: 0 14px 32px rgba(20, 85, 55, 0.08);
+}
+
+.recommendation-card--secondary {
+  background: rgba(247, 243, 233, 0.92);
+}
+
+.recommendation-card--selected {
+  outline: 2px solid rgba(20, 85, 55, 0.42);
+  outline-offset: 2px;
+}
+
+.recommendation-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.recommendation-card__eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(20, 85, 55, 0.72);
+}
+
+.recommendation-card__title {
+  margin: 0.2rem 0 0;
+  font-size: 1.2rem;
+}
+
+.recommendation-card__confidence {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  background: rgba(14, 31, 24, 0.08);
+}
+
+.recommendation-card__confidence--high {
+  background: rgba(20, 85, 55, 0.12);
+  color: rgb(20, 85, 55);
+}
+
+.recommendation-card__confidence--medium {
+  background: rgba(179, 110, 0, 0.12);
+  color: rgb(140, 86, 0);
+}
+
+.recommendation-card__confidence--low {
+  background: rgba(155, 70, 0, 0.12);
+  color: rgb(155, 70, 0);
+}
+
+.recommendation-card__confidence--blocked {
+  background: rgba(149, 21, 21, 0.12);
+  color: rgb(149, 21, 21);
+}
+
+.recommendation-card__range {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.recommendation-card__reason,
+.recommendation-card__meta,
+.recommendation-workspace__selection {
+  margin: 0;
+  color: rgba(14, 31, 24, 0.8);
+}
+
+.recommendation-card__warnings {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recommendation-card__warning {
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.9rem;
+  font-size: 0.95rem;
+}
+
+.recommendation-card__warning--info {
+  background: rgba(20, 85, 55, 0.08);
+}
+
+.recommendation-card__warning--warning {
+  background: rgba(179, 110, 0, 0.1);
+}
+
+.recommendation-card__warning--blocker {
+  background: rgba(149, 21, 21, 0.1);
+}
+
 .case-entry-error__content {
   display: grid;
   gap: 8px;
