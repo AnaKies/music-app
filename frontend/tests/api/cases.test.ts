@@ -208,6 +208,41 @@ describe('Cases API Client', () => {
     });
   });
 
+  describe('deleteCase', () => {
+    it('successfully deletes a case through the provisional cleanup route', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 204,
+        json: async () => undefined,
+      });
+
+      await expect(casesApi.deleteCase('case-123')).resolves.toBeUndefined();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8000/cases/case-123',
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/json',
+          },
+        })
+      );
+    });
+
+    it('throws ApiError when deleting an unknown case', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: 'Case with id missing-case not found.' }),
+      });
+
+      await expect(casesApi.deleteCase('missing-case')).rejects.toMatchObject({
+        status: 404,
+        message: 'Case with id missing-case not found.',
+      });
+    });
+  });
+
   describe('ApiError', () => {
     it('creates error with status and message', () => {
       const error = new ApiError('Test error', 400, 'VALIDATION_ERROR');

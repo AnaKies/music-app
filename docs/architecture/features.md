@@ -83,6 +83,7 @@ Scope:
 - submit structured answers
 - continue interview sessions
 - surface follow-up questions when confidence is low
+- allow provisional cleanup of non-suggested stale cases during local MVP testing
 
 Responsible agents:
 

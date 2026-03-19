@@ -16,6 +16,16 @@ class CaseService:
         return db.query(TranspositionCase).all()
 
     @staticmethod
+    def delete_case(db: Session, case_id: str) -> bool:
+        case = CaseService.get_case_by_id(db, case_id)
+        if case is None:
+            return False
+
+        db.delete(case)
+        db.commit()
+        return True
+
+    @staticmethod
     def build_case_summary(case: TranspositionCase) -> CaseSummary:
         return CaseSummary(
             id=case.id,

@@ -67,3 +67,22 @@ def list_cases(db: Session = Depends(get_db)) -> list[CaseSummary]:
     """
     cases = CaseService.get_all_cases(db)
     return [CaseService.build_case_summary(case) for case in cases]
+
+
+@router.delete(
+    "/cases/{case_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_case(
+    case_id: str,
+    db: Session = Depends(get_db),
+) -> None:
+    """
+    Provisional MVP cleanup route for removing a case.
+    """
+    deleted = CaseService.delete_case(db, case_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Case with id {case_id} not found.",
+        )

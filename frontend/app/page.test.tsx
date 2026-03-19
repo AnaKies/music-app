@@ -19,6 +19,7 @@ vi.mock('@/shared/api/cases', () => ({
   casesApi: {
     listCases: vi.fn(),
     createCase: vi.fn(),
+    deleteCase: vi.fn(),
   },
   ApiError: class ApiError extends Error {
     constructor(message: string, public status: number) {
@@ -132,6 +133,26 @@ describe('CaseEntryPage (Frontend-4)', () => {
       await waitFor(() => {
         expect(screen.getByText('2 scores')).toBeInTheDocument();
         expect(screen.getByText('5 scores')).toBeInTheDocument();
+      });
+    });
+
+    it('shows a stable short case identifier for otherwise similar cases', async () => {
+      vi.mocked(casesApi.listCases).mockResolvedValue([
+        {
+          id: 'case-abcdef',
+          status: 'new',
+          instrumentIdentity: 'placeholder',
+          scoreCount: 0,
+          createdAt: '2024-01-15T10:00:00Z',
+          updatedAt: '2024-01-15T12:00:00Z',
+        },
+      ]);
+
+      render(<CaseEntryPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Untitled case')).toBeInTheDocument();
+        expect(screen.getByText('Case ABCDEF')).toBeInTheDocument();
       });
     });
   });
@@ -276,6 +297,30 @@ describe('CaseEntryPage (Frontend-4)', () => {
         const caseCard = screen.getByText('trumpet-bb').closest('article');
         expect(caseCard).toBeInTheDocument();
       });
+    });
+
+    it('shows a provisional delete action only for other cases and removes the deleted case from the list', async () => {
+      vi.mocked(casesApi.listCases).mockResolvedValue(mockCases);
+      vi.mocked(casesApi.deleteCase).mockResolvedValue(undefined);
+
+      render(<CaseEntryPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('trumpet-bb')).toBeInTheDocument();
+      });
+
+      const deleteButtons = screen.getAllByRole('button', { name: /delete case/i });
+      expect(deleteButtons).toHaveLength(2);
+      expect(screen.queryByRole('button', { name: /delete case trumpet-bb/i })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /delete case alto-sax-eb/i }));
+
+      await waitFor(() => {
+        expect(casesApi.deleteCase).toHaveBeenCalledWith('case-2');
+      });
+
+      expect(screen.queryByText('alto-sax-eb')).not.toBeInTheDocument();
+      expect(screen.getByText('trumpet-bb')).toBeInTheDocument();
     });
   });
 });

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import Base, engine, get_db
 from backend.domain.cases.models import TranspositionCase
+from backend.domain.interviews.models import InterviewSession  # noqa: F401
 from backend.main import app
 
 
@@ -287,6 +288,303 @@ def test_post_interviews_reuses_completed_session_instead_of_silently_starting_a
         assert resumed.json()["interviewId"] == interview_id
         assert resumed.json()["nextQuestion"] is None
         assert len(resumed.json()["collectedAnswers"]) == 4
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_completed_interview_marks_case_ready_for_upload():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "trumpet-bb"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": ["high_register"]},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "G3", "max": "D5"}},
+                },
+            )
+            final_step = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "additional_context",
+                    "answer": {"text": "clear and playable"},
+                },
+            )
+            case_detail = client.get("/cases/case-f2-1")
+
+        assert final_step.status_code == 200
+        assert final_step.json()["status"] == "completed"
+        assert final_step.json()["derivedCaseSummary"]["caseStatus"] == "ready_for_upload"
+        assert case_detail.status_code == 200
+        assert case_detail.json()["status"] == "ready_for_upload"
+        assert case_detail.json()["constraints"]["comfort_range_min"] == "G3"
+        assert case_detail.json()["constraints"]["comfort_range_max"] == "D5"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_low_confidence_follow_up_does_not_finalize_case_until_clarification_is_complete():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "trumpet-bb"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": ["high_register", "difficult_keys"]},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "G3", "max": "D5"}},
+                },
+            )
+            awaiting_follow_up = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "additional_context",
+                    "answer": {"text": "not sure about the upper register"},
+                },
+            )
+            case_during_follow_up = client.get("/cases/case-f2-1")
+            clarified = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "additional_context_follow_up",
+                    "answer": {"text": "avoid assuming anything above written D5"},
+                },
+            )
+            case_after_clarification = client.get("/cases/case-f2-1")
+
+        assert awaiting_follow_up.status_code == 200
+        assert awaiting_follow_up.json()["status"] == "awaiting_follow_up"
+        assert awaiting_follow_up.json()["derivedCaseSummary"]["caseStatus"] == "interview_in_progress"
+        assert case_during_follow_up.status_code == 200
+        assert case_during_follow_up.json()["status"] == "interview_in_progress"
+        assert case_during_follow_up.json()["constraints"]["comfort_range_min"] == "G3"
+        assert case_during_follow_up.json()["constraints"]["comfort_range_max"] == "D5"
+
+        assert clarified.status_code == 200
+        assert clarified.json()["status"] == "completed"
+        assert clarified.json()["derivedCaseSummary"]["caseStatus"] == "ready_for_upload"
+        assert case_after_clarification.status_code == 200
+        assert case_after_clarification.json()["status"] == "ready_for_upload"
+        assert case_after_clarification.json()["constraints"]["difficult_keys"] == ["needs_clarification"]
+        assert case_after_clarification.json()["constraints"]["restricted_registers"] == ["high_register"]
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_resuming_an_unfinished_follow_up_session_resets_case_back_to_interview_in_progress():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "trumpet-bb"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": ["high_register"]},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "G3", "max": "D5"}},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "additional_context",
+                    "answer": {"text": "not sure about the upper register"},
+                },
+            )
+
+            persisted_case = session.query(TranspositionCase).filter(TranspositionCase.id == "case-f2-1").first()
+            assert persisted_case is not None
+            persisted_case.status = "ready_for_upload"
+            session.add(persisted_case)
+            session.commit()
+
+            resumed = client.post("/interviews", json={"caseId": "case-f2-1"})
+            case_detail = client.get("/cases/case-f2-1")
+
+        assert resumed.status_code == 200
+        assert resumed.json()["status"] == "awaiting_follow_up"
+        assert resumed.json()["derivedCaseSummary"]["caseStatus"] == "interview_in_progress"
+        assert case_detail.status_code == 200
+        assert case_detail.json()["status"] == "interview_in_progress"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_interview_updates_only_the_target_case_when_multiple_cases_exist():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, case_id="case-f3-1")
+    _seed_case(session, case_id="case-f3-2")
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f3-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f3-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "alto-sax-eb"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f3-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": ["low_register"]},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f3-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "C3", "max": "A5"}},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f3-1",
+                    "interviewId": interview_id,
+                    "questionId": "additional_context",
+                    "answer": {"text": "clear and playable"},
+                },
+            )
+
+            updated_case = client.get("/cases/case-f3-1")
+            untouched_case = client.get("/cases/case-f3-2")
+
+        assert updated_case.status_code == 200
+        assert updated_case.json()["instrumentIdentity"] == "alto-sax-eb"
+        assert updated_case.json()["status"] == "ready_for_upload"
+        assert updated_case.json()["constraints"]["restricted_registers"] == ["low_register"]
+        assert updated_case.json()["constraints"]["comfort_range_min"] == "C3"
+        assert updated_case.json()["constraints"]["comfort_range_max"] == "A5"
+
+        assert untouched_case.status_code == 200
+        assert untouched_case.json()["instrumentIdentity"] == "placeholder"
+        assert untouched_case.json()["status"] == "new"
+        assert untouched_case.json()["constraints"]["restricted_registers"] == []
+        assert untouched_case.json()["constraints"]["comfort_range_min"] is None
+        assert untouched_case.json()["constraints"]["comfort_range_max"] is None
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()

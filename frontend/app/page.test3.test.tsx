@@ -93,6 +93,30 @@ describe('Test-3: CaseEntryPage default-case selection behavior', () => {
     expect(within(otherCasesSection as HTMLElement).getByLabelText('Case: trumpet-bb')).toBeInTheDocument();
     expect(within(otherCasesSection as HTMLElement).getByLabelText('Case: flute')).toBeInTheDocument();
     expect(within(otherCasesSection as HTMLElement).getByLabelText('Case: clarinet-bb')).toBeInTheDocument();
+    expect(within(otherCasesSection as HTMLElement).getByText('Most recent first')).toBeInTheDocument();
+  });
+
+  it('orders the other cases by most recent update and distinguishes placeholder cases with a stable id suffix', async () => {
+    vi.mocked(casesApi.listCases).mockResolvedValue([
+      {
+        id: 'case-latest-placeholder',
+        status: 'new',
+        instrumentIdentity: 'placeholder',
+        scoreCount: 0,
+        createdAt: '2024-01-17T08:00:00Z',
+        updatedAt: '2024-01-17T18:00:00Z',
+      },
+      ...activeCasesWithDifferentDates,
+    ]);
+
+    render(<CaseEntryPage />);
+
+    const otherCasesSection = await waitFor(() => screen.getByText('Other cases').closest('section'));
+    const articles = within(otherCasesSection as HTMLElement).getAllByRole('article');
+
+    expect(within(articles[0]).getByText('Untitled case')).toBeInTheDocument();
+    expect(within(articles[0]).getByText('Case HOLDER')).toBeInTheDocument();
+    expect(within(articles[1]).getByText('clarinet-bb')).toBeInTheDocument();
   });
 
   it('does not fabricate a suggested case when only archived cases exist', async () => {

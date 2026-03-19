@@ -2,9 +2,15 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, Music, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { PlusCircle, Music, Clock, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 import { casesApi, ApiError } from '@/shared/api/cases';
 import type { CaseSummary, CaseStatus } from '@/shared/types/cases';
+
+function sortCasesByUpdatedAtDesc(caseSummaries: CaseSummary[]): CaseSummary[] {
+  return [...caseSummaries].sort((leftCase, rightCase) => {
+    return new Date(rightCase.updatedAt).getTime() - new Date(leftCase.updatedAt).getTime();
+  });
+}
 
 function getSuggestedCase(caseSummaries: CaseSummary[]): CaseSummary | null {
   const activeCases = caseSummaries.filter(
@@ -20,9 +26,19 @@ function getSuggestedCase(caseSummaries: CaseSummary[]): CaseSummary | null {
     return null;
   }
 
-  return [...activeCases].sort((leftCase, rightCase) => {
-    return new Date(rightCase.updatedAt).getTime() - new Date(leftCase.updatedAt).getTime();
-  })[0];
+  return sortCasesByUpdatedAtDesc(activeCases)[0];
+}
+
+function getCaseDisplayName(caseSummary: CaseSummary): string {
+  if (caseSummary.instrumentIdentity === 'placeholder') {
+    return 'Untitled case';
+  }
+
+  return caseSummary.instrumentIdentity;
+}
+
+function getCaseShortId(caseId: string): string {
+  return caseId.slice(-6).toUpperCase();
 }
 
 /**
@@ -60,11 +76,15 @@ function StatusBadge({ status }: { status: CaseStatus }) {
 function CaseCard({ 
   caseSummary, 
   isSuggested = false,
-  onClick 
+  isDeleting = false,
+  onClick,
+  onDelete,
 }: { 
   caseSummary: CaseSummary; 
   isSuggested?: boolean;
+  isDeleting?: boolean;
   onClick?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }) {
   return (
     <article 
@@ -93,9 +113,26 @@ function CaseCard({
         <div className="case-card__content">
           <div className="case-card__header">
             <h3 className="case-card__title">
-              {caseSummary.instrumentIdentity}
+              {getCaseDisplayName(caseSummary)}
             </h3>
-            <StatusBadge status={caseSummary.status} />
+            <div className="case-card__header-actions">
+              <StatusBadge status={caseSummary.status} />
+              {!isSuggested ? (
+                <button
+                  type="button"
+                  className="case-card__delete-button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDelete?.(caseSummary.id);
+                  }}
+                  disabled={isDeleting}
+                  aria-label={`Delete case ${getCaseDisplayName(caseSummary)}`}
+                >
+                  <Trash2 className="case-card__delete-icon" />
+                  <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
+                </button>
+              ) : null}
+            </div>
           </div>
           
           <div className="case-card__meta">
@@ -104,6 +141,7 @@ function CaseCard({
               {new Date(caseSummary.updatedAt).toLocaleDateString()}
             </span>
             <span>{caseSummary.scoreCount} score{caseSummary.scoreCount !== 1 ? 's' : ''}</span>
+            <span>Case {getCaseShortId(caseSummary.id)}</span>
           </div>
         </div>
       </div>
@@ -125,6 +163,7 @@ export default function CaseEntryPage() {
   const [cases, setCases] = useState<CaseSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingCaseId, setDeletingCaseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   /**
@@ -184,12 +223,34 @@ export default function CaseEntryPage() {
     router.push(`/cases/${caseId}`);
   }, [router]);
 
+  const handleDeleteCase = useCallback(async (caseId: string) => {
+    const caseToDelete = cases.find((caseSummary) => caseSummary.id === caseId);
+    if (!caseToDelete) {
+      return;
+    }
+
+    try {
+      setDeletingCaseId(caseId);
+      setError(null);
+      await casesApi.deleteCase(caseId);
+      setCases((currentCases) => currentCases.filter((caseSummary) => caseSummary.id !== caseId));
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to delete case. Please try again.');
+      }
+    } finally {
+      setDeletingCaseId(null);
+    }
+  }, [cases]);
+
   /**
    * Find the suggested case (most recently used active case).
    */
   const suggestedCase = getSuggestedCase(cases);
 
-  const otherCases = cases.filter(c => c.id !== suggestedCase?.id);
+  const otherCases = sortCasesByUpdatedAtDesc(cases.filter(c => c.id !== suggestedCase?.id));
 
   return (
     <main className="case-entry-page">
@@ -249,7 +310,12 @@ export default function CaseEntryPage() {
 
         {/* Other Cases Section */}
         <section className="case-entry-section">
-          <h2 className="case-entry-section__title">Other cases</h2>
+          <div className="case-entry-section__header">
+            <h2 className="case-entry-section__title">Other cases</h2>
+            {otherCases.length > 1 ? (
+              <p className="case-entry-section__subtitle">Most recent first</p>
+            ) : null}
+          </div>
           <div className="case-list">
             {isLoading ? (
               <div className="case-entry-placeholder case-entry-placeholder--centered">
@@ -260,7 +326,9 @@ export default function CaseEntryPage() {
                 <CaseCard
                   key={caseItem.id}
                   caseSummary={caseItem}
+                  isDeleting={deletingCaseId === caseItem.id}
                   onClick={handleSelectCase}
+                  onDelete={handleDeleteCase}
                 />
               ))
             ) : (

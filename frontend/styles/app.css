@@ -92,6 +92,12 @@ select {
   font-size: 1.4rem;
 }
 
+.case-entry-section__subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
 .case-entry-section__description {
   margin: 0 0 18px;
   color: var(--text-secondary);
@@ -157,14 +163,25 @@ select {
 
 .case-card__content {
   flex: 1;
+  min-width: 0;
 }
 
 .case-card__header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 10px;
+}
+
+.case-card__header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
 }
 
 .case-card__meta {
@@ -193,6 +210,40 @@ select {
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.case-card__delete-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(145, 70, 70, 0.22);
+  background: rgba(145, 70, 70, 0.08);
+  color: #7f3d3d;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.case-card__delete-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.case-card__delete-icon {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 720px) {
+  .case-card__header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    margin-left: 0;
+  }
 }
 
 .bg-slate-100.text-slate-700,

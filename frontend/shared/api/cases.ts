@@ -41,6 +41,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
       errorData.code
     );
   }
+  if (response.status === 204) {
+    return undefined as T;
+  }
   return response.json();
 }
 
@@ -106,6 +109,21 @@ export const casesApi = {
   async listCases(): Promise<CaseSummary[]> {
     return performRequest<CaseSummary[]>(`${API_BASE_URL}/cases`, {
       method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+  },
+
+  /**
+   * Delete a case through the provisional MVP cleanup route.
+   *
+   * @param caseId - Unique case identifier
+   * @throws ApiError if the case cannot be deleted
+   */
+  async deleteCase(caseId: string): Promise<void> {
+    await performRequest<void>(`${API_BASE_URL}/cases/${caseId}`, {
+      method: 'DELETE',
       headers: {
         'Accept': 'application/json',
       },

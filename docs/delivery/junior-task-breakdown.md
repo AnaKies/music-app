@@ -113,13 +113,16 @@ Tasks:
 - [`Frontend-7`](./task-briefs/f1-f4.md#frontend-7) `[After contract]` Render multi-select questions.
 - [`Frontend-8`](./task-briefs/f1-f4.md#frontend-8) `[After contract]` Render range and note inputs.
 - [`Frontend-9`](./task-briefs/f1-f4.md#frontend-9) `[After contract]` Wire submit and progress state behavior.
+- [`Backend-6a`](./task-briefs/f1-f4.md#backend-6a) `[After backend]` Add a provisional case-delete endpoint for local MVP cleanup.
+- [`Frontend-9a`](./task-briefs/f1-f4.md#frontend-9a) `[After backend]` Add a provisional delete action for `Other cases` only.
 - [`Test-4`](./task-briefs/f1-f4.md#test-4) `[After contract]` Add contract tests for interview endpoints.
 - [`Test-5`](./task-briefs/f1-f4.md#test-5) `[After backend]` Add UI tests for multiple question types.
 - [`Test-6`](./task-briefs/f1-f4.md#test-6) `[After backend]` Add a follow-up test for low-confidence handling.
+- [`Test-6a`](./task-briefs/f1-f4.md#test-6a) `[After frontend]` Add regression tests for the provisional delete flow.
 - [`Safety-1`](./task-briefs/f1-f4.md#safety-1) `[After AI schema]` Review that structured questions remain preferred over default free-text collection.
 
 Parallelization note:
-Start with `AI-1`, `AI-2`, and `Frontend-5`. Once the question and answer contract is stable, split work across backend, frontend renderers, safety review, and test.
+Start with `AI-1`, `AI-2`, and `Frontend-5`. Once the question and answer contract is stable, split work across backend, frontend renderers, safety review, and test. The provisional cleanup routine should follow the stable case-list path and remain explicitly temporary.
 
 ## [F3. Case Readiness And Persistence](./task-briefs/f1-f4.md#f3-case-readiness-and-persistence)
 

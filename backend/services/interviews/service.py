@@ -38,6 +38,15 @@ LOW_CONFIDENCE_PHRASES = (
 )
 
 
+def _has_confirmed_constraints_for_upload(case: TranspositionCase) -> bool:
+    return bool(
+        case.instrument_identity
+        and case.instrument_identity != "placeholder"
+        and case.comfort_range_min
+        and case.comfort_range_max
+    )
+
+
 def _question_definitions() -> dict[str, InterviewQuestion]:
     return {
         "instrument_identity": InterviewQuestion(
@@ -219,6 +228,14 @@ def _apply_answer_to_case(case: TranspositionCase, question: InterviewQuestion, 
         return
 
 
+def _sync_case_status(case: TranspositionCase, session_model: InterviewSession) -> None:
+    if session_model.status == InterviewSessionStatus.COMPLETED and _has_confirmed_constraints_for_upload(case):
+        case.status = CaseStatus.READY_FOR_UPLOAD
+        return
+
+    case.status = CaseStatus.INTERVIEW_IN_PROGRESS
+
+
 def _next_question_id(current_question_id: str) -> Optional[str]:
     if current_question_id not in QUESTION_ORDER:
         return None
@@ -248,6 +265,10 @@ class InterviewService:
                 .first()
             )
             if existing_session is not None and existing_session.status != InterviewSessionStatus.COMPLETED:
+                _sync_case_status(case, existing_session)
+                db.add(case)
+                db.commit()
+                db.refresh(case)
                 recorded_answers = _recorded_answers(existing_session)
                 current_question = definitions.get(existing_session.current_question_id or QUESTION_ORDER[0])
                 return InterviewAdvanceResponse(
@@ -262,6 +283,10 @@ class InterviewService:
                 )
 
             if existing_session is not None and existing_session.status == InterviewSessionStatus.COMPLETED:
+                _sync_case_status(case, existing_session)
+                db.add(case)
+                db.commit()
+                db.refresh(case)
                 recorded_answers = _recorded_answers(existing_session)
                 return InterviewAdvanceResponse(
                     interviewId=existing_session.id,
@@ -353,7 +378,9 @@ class InterviewService:
                 session_model.current_question_id = next_question_id
                 session_model.low_confidence = {"active": False}
 
+        _sync_case_status(case, session_model)
         db.add(session_model)
+        db.add(case)
         db.commit()
         db.refresh(session_model)
         db.refresh(case)
