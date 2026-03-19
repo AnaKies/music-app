@@ -288,4 +288,38 @@ describe('InterviewPage', () => {
     expect(summarySection).not.toBeNull();
     expect(within(summarySection as HTMLElement).getByText('1')).toBeInTheDocument();
   });
+
+  it('does not show the success completion message when the interview ends without upload-ready constraints', async () => {
+    vi.mocked(interviewsApi.startOrContinueInterview).mockResolvedValue({
+      interviewId: 'interview-1',
+      caseId: 'case-123',
+      status: 'completed',
+      nextQuestion: null,
+      progress: {
+        currentStep: 4,
+        totalSteps: 4,
+        percentComplete: 100,
+      },
+      lowConfidence: false,
+      collectedAnswers: [],
+      derivedCaseSummary: {
+        caseStatus: 'interview_in_progress',
+        instrumentIdentity: 'flute',
+        difficultKeys: [],
+        restrictedRegisters: [],
+        comfortRangeMin: 'no',
+        comfortRangeMax: 'no',
+        notes: ['no'],
+        confirmedConstraintCount: 1,
+      },
+    });
+
+    render(<InterviewPage />);
+
+    expect(await screen.findByText('Interview data still needs clarification')).toBeInTheDocument();
+    expect(
+      screen.getByText(/the confirmed constraints are still not sufficient for upload readiness/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Interview session complete')).not.toBeInTheDocument();
+  });
 });
