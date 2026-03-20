@@ -34,6 +34,7 @@ vi.mock('@/shared/api/scores', () => ({
     uploadScore: vi.fn(),
     getScore: vi.fn(),
     getScorePreview: vi.fn(),
+    getResultDownloadUrl: vi.fn((scoreDocumentId: string) => `http://localhost:8000/scores/${scoreDocumentId}/download?artifact=result`),
   },
 }));
 
@@ -59,6 +60,9 @@ vi.mock('next/navigation', () => ({
 describe('CaseDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(scoresApi.getResultDownloadUrl).mockImplementation(
+      (scoreDocumentId: string) => `http://localhost:8000/scores/${scoreDocumentId}/download?artifact=result`
+    );
   });
 
   it('loads the selected case and renders the case overview', async () => {
@@ -541,6 +545,10 @@ describe('CaseDetailPage', () => {
     });
     expect(await screen.findByText(/The deterministic transformation completed successfully\./i)).toBeInTheDocument();
     expect(await screen.findByRole('tab', { name: /result/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('link', { name: /download result musicxml/i })).toHaveAttribute(
+      'href',
+      'http://localhost:8000/scores/score-123/download?artifact=result'
+    );
   });
 
   it('renders a calm failed preview state for an existing uploaded score', async () => {
@@ -741,6 +749,10 @@ describe('CaseDetailPage', () => {
       expect(transformationsApi.getTransformation).toHaveBeenCalledWith('job-1');
     });
     expect(await screen.findByText(/The deterministic transformation completed successfully\./i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /download result musicxml/i })).toHaveAttribute(
+      'href',
+      'http://localhost:8000/scores/score-123/download?artifact=result'
+    );
   });
 
   it('keeps the case page visible when only the transformation status load fails', async () => {

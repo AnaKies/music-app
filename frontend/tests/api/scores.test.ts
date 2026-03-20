@@ -137,4 +137,10 @@ describe('Scores API Client', () => {
     expect(result.latestTransformationJobId).toBe('job-123');
     expect(result.sourcePreview?.availability).toBe('ready');
   });
+
+  it('builds the result download URL from the stable score endpoint', () => {
+    expect(scoresApi.getResultDownloadUrl('score-123')).toBe(
+      'http://localhost:8000/scores/score-123/download?artifact=result'
+    );
+  });
 });

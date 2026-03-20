@@ -86,6 +86,8 @@ export default function CaseDetailPage() {
     activePreviewMode === 'result' ? resultPreviewResult : sourcePreviewResult;
   const isNotationPreviewReady = sourcePreviewResult?.availability === 'ready';
   const isResultPreviewReady = resultPreviewResult?.availability === 'ready';
+  const resultDownloadUrl =
+    activeScoreDocumentId && isResultPreviewReady ? scoresApi.getResultDownloadUrl(activeScoreDocumentId) : null;
 
   useEffect(() => {
     let isMounted = true;
@@ -368,6 +370,14 @@ export default function CaseDetailPage() {
                   >
                     <span>{isGeneratingRecommendations ? 'Generating...' : 'Load Recommendations'}</span>
                   </button>
+                  {resultDownloadUrl ? (
+                    <a
+                      href={resultDownloadUrl}
+                      className="new-case-actions__button"
+                    >
+                      <span>Download Result MusicXML</span>
+                    </a>
+                  ) : null}
                   <Link href="/" className="new-case-actions__button">
                     <ArrowLeft className="new-case-actions__button-icon" />
                     <span>Back To Cases</span>

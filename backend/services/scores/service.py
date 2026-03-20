@@ -195,6 +195,33 @@ def get_score_read(
     )
 
 
+def get_result_score_download(
+    db: Session,
+    score_document_id: str,
+) -> Response:
+    score_document = db.query(ScoreDocument).filter(ScoreDocument.id == score_document_id).first()
+    if score_document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Score with id {score_document_id} not found.",
+        )
+
+    transformation_job = _get_latest_result_artifact(db, score_document.id)
+    if transformation_job is None or not transformation_job.transformed_musicxml:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No transformed result artifact is available for download.",
+        )
+
+    filename = transformation_job.result_filename or _build_result_download_filename(score_document.original_filename)
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return Response(
+        content=ensure_xml_declaration(transformation_job.transformed_musicxml),
+        media_type="application/vnd.recordare.musicxml+xml",
+        headers=headers,
+    )
+
+
 def _build_source_score_preview(score_document: ScoreDocument) -> ScorePreviewResponse:
     canonical_summary = _build_canonical_summary(score_document)
     revision_token = _build_revision_token(score_document)
@@ -254,16 +281,7 @@ def _build_source_score_preview(score_document: ScoreDocument) -> ScorePreviewRe
 
 
 def _build_result_score_preview(db: Session, score_document: ScoreDocument) -> ScorePreviewResponse:
-    transformation_job = (
-        db.query(TransformationJob)
-        .filter(
-            TransformationJob.score_document_id == score_document.id,
-            TransformationJob.result_storage_uri.isnot(None),
-            TransformationJob.result_revision_token.isnot(None),
-        )
-        .order_by(TransformationJob.created_at.desc())
-        .first()
-    )
+    transformation_job = _get_latest_result_artifact(db, score_document.id)
     if transformation_job is not None and transformation_job.transformed_musicxml and transformation_job.result_revision_token:
         canonical_summary = _build_transformed_summary(transformation_job.transformed_musicxml)
         return ScorePreviewResponse(
@@ -289,6 +307,19 @@ def _build_result_score_preview(db: Session, score_document: ScoreDocument) -> S
         revisionToken=_build_revision_token(score_document),
         safeSummary="A result preview is not available yet because no transformed result artifact exists.",
         originalFilename=score_document.original_filename,
+    )
+
+
+def _get_latest_result_artifact(db: Session, score_document_id: str) -> Optional[TransformationJob]:
+    return (
+        db.query(TransformationJob)
+        .filter(
+            TransformationJob.score_document_id == score_document_id,
+            TransformationJob.result_storage_uri.isnot(None),
+            TransformationJob.result_revision_token.isnot(None),
+        )
+        .order_by(TransformationJob.created_at.desc())
+        .first()
     )
 
 
@@ -339,6 +370,12 @@ def _build_transformed_summary(transformed_musicxml: str) -> Optional[CanonicalS
 def _build_revision_token(score_document: ScoreDocument) -> str:
     created_at = score_document.created_at or datetime.now(timezone.utc)
     return created_at.isoformat()
+
+
+def _build_result_download_filename(original_filename: str) -> str:
+    original_path = Path(original_filename)
+    stem = original_path.stem or "transformed-score"
+    return f"{stem}-transformed.musicxml"
 
 
 def get_source_score_preview_content(

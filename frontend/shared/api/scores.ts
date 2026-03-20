@@ -72,4 +72,8 @@ export const scoresApi = {
       );
     }
   },
+
+  getResultDownloadUrl(scoreDocumentId: string): string {
+    return `${API_BASE_URL}/scores/${scoreDocumentId}/download?artifact=result`;
+  },
 };

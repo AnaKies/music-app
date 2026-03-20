@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from backend.api.schemas.cases import CaseStatus
 from backend.api.schemas.recommendations import RecommendationConfidence
 from backend.api.schemas.scores import ParseFailureType, ScoreFormat, ScoreProcessingStatus
+from backend.api.schemas.transformations import TransformationStatus
 from backend.database import Base, engine, get_db
 from backend.domain.cases.models import TranspositionCase
 from backend.domain.recommendations.models import RangeRecommendation
@@ -257,6 +258,95 @@ def test_get_scores_preview_returns_failed_state_for_parse_failure():
         assert payload["failureSeverity"] == "warning"
         assert payload["previewAccess"] is None
         assert "local://" not in str(payload)
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_get_scores_download_returns_transformed_musicxml_artifact():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-result-download")
+    score_document = ScoreDocument(
+        id="score-download-ready",
+        transposition_case_id="case-result-download",
+        original_filename="example.musicxml",
+        format=ScoreFormat.MUSICXML,
+        processing_status=ScoreProcessingStatus.COMPLETED,
+        storage_uri="local://scores/case-result-download/example.musicxml",
+        source_musicxml="<score-partwise version='4.0'></score-partwise>",
+        content_size=256,
+    )
+    session.add(score_document)
+    session.flush()
+    session.add(
+        TransformationJob(
+            id="job-download-ready",
+            transposition_case_id="case-result-download",
+            score_document_id=score_document.id,
+            recommendation_id="rec-1",
+            status=TransformationStatus.COMPLETED,
+            selected_range_min="G3",
+            selected_range_max="D5",
+            semitone_shift=-2,
+            safe_summary="The deterministic transformation completed successfully.",
+            warnings=[],
+            transformed_musicxml="<score-partwise version='4.0'></score-partwise>",
+            result_storage_uri="local://transformations/job-download-ready/example-transformed.musicxml",
+            result_filename="example-transformed.musicxml",
+            result_revision_token="2026-03-20T11:00:00+00:00",
+        )
+    )
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/scores/score-download-ready/download?artifact=result")
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("application/vnd.recordare.musicxml+xml")
+        assert response.headers["content-disposition"] == 'attachment; filename="example-transformed.musicxml"'
+        assert response.text.startswith("<?xml")
+        assert "<score-partwise" in response.text
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_get_scores_download_rejects_unsupported_artifact_selector():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-result-download")
+    session.add(
+        ScoreDocument(
+            id="score-download-ready",
+            transposition_case_id="case-result-download",
+            original_filename="example.musicxml",
+            format=ScoreFormat.MUSICXML,
+            processing_status=ScoreProcessingStatus.PARSED,
+            storage_uri="local://scores/case-result-download/example.musicxml",
+            source_musicxml="<score-partwise version='4.0'></score-partwise>",
+            content_size=64,
+        )
+    )
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/scores/score-download-ready/download?artifact=source")
+
+        assert response.status_code == 422
+        assert response.json() == {"detail": "Only result artifact downloads are supported."}
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()
