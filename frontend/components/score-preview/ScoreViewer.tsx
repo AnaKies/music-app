@@ -25,15 +25,30 @@ export function ScoreViewer({ previewAccess, title }: ScoreViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(true);
+  const [pageCount, setPageCount] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     let isMounted = true;
     let osmdInstance: { clear?: () => void } | null = null;
 
+    function updateVisiblePage(container: HTMLDivElement, page: number) {
+      const pageItems = Array.from(container.children) as HTMLElement[];
+      if (!pageItems.length) {
+        return;
+      }
+
+      pageItems.forEach((item, index) => {
+        item.style.display = index + 1 === page ? 'block' : 'none';
+      });
+    }
+
     async function renderScore() {
       try {
         setIsRendering(true);
         setRenderError(null);
+        setCurrentPage(1);
+        setPageCount(1);
 
         const response = await fetch(resolvePreviewUrl(previewAccess));
         if (!response.ok) {
@@ -64,6 +79,10 @@ export function ScoreViewer({ previewAccess, title }: ScoreViewerProps) {
         osmd.render();
 
         if (isMounted) {
+          const renderedPages = Math.max(containerRef.current.children.length, 1);
+          setPageCount(renderedPages);
+          setCurrentPage(1);
+          updateVisiblePage(containerRef.current, 1);
           setIsRendering(false);
         }
       } catch (_error) {
@@ -84,6 +103,21 @@ export function ScoreViewer({ previewAccess, title }: ScoreViewerProps) {
     };
   }, [previewAccess]);
 
+  useEffect(() => {
+    if (!containerRef.current || isRendering) {
+      return;
+    }
+
+    const pageItems = Array.from(containerRef.current.children) as HTMLElement[];
+    if (!pageItems.length) {
+      return;
+    }
+
+    pageItems.forEach((item, index) => {
+      item.style.display = index + 1 === currentPage ? 'block' : 'none';
+    });
+  }, [currentPage, isRendering]);
+
   if (renderError) {
     return <p className="score-preview__render-error">{renderError}</p>;
   }
@@ -91,6 +125,29 @@ export function ScoreViewer({ previewAccess, title }: ScoreViewerProps) {
   return (
     <div className="score-preview__viewer-shell">
       {isRendering ? <p className="score-preview__viewer-status">Rendering the score preview.</p> : null}
+      {pageCount > 1 ? (
+        <div className="score-preview__pagination" aria-label="Score preview pagination">
+          <button
+            type="button"
+            className="score-preview__page-button"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
+          >
+            Previous page
+          </button>
+          <p className="score-preview__page-indicator">
+            Page {currentPage} of {pageCount}
+          </p>
+          <button
+            type="button"
+            className="score-preview__page-button"
+            disabled={currentPage === pageCount}
+            onClick={() => setCurrentPage((page) => Math.min(page + 1, pageCount))}
+          >
+            Next page
+          </button>
+        </div>
+      ) : null}
       <div ref={containerRef} className="score-preview__viewer" aria-label={`${title} score viewer`} />
     </div>
   );

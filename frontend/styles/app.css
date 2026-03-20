@@ -938,6 +938,13 @@ select {
     radial-gradient(circle at top right, rgba(188, 123, 74, 0.12), transparent 42%);
 }
 
+.score-preview__actions {
+  margin-top: 24px;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
 .score-preview__header {
   display: flex;
   align-items: flex-start;
@@ -1035,6 +1042,32 @@ select {
   gap: 10px;
 }
 
+.score-preview__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.score-preview__page-button {
+  border: 1px solid rgba(33, 43, 76, 0.15);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-primary);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 700;
+}
+
+.score-preview__page-button:disabled {
+  opacity: 0.45;
+}
+
+.score-preview__page-indicator {
+  margin: 0;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
 .score-preview__viewer-status,
 .score-preview__render-error {
   margin: 0;
@@ -1042,7 +1075,7 @@ select {
 }
 
 .score-preview__viewer {
-  overflow: auto;
+  overflow: hidden;
   max-width: 100%;
   border-radius: 18px;
   border: 1px solid rgba(33, 43, 76, 0.12);
@@ -1104,5 +1137,11 @@ select {
   .interview-layout,
   .interview-range-grid {
     grid-template-columns: 1fr;
+  }
+
+  .score-preview__actions,
+  .score-preview__pagination {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

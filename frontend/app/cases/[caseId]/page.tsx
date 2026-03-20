@@ -73,6 +73,7 @@ export default function CaseDetailPage() {
   }, [caseId]);
 
   const activeScoreDocumentId = uploadResult?.scoreDocumentId ?? caseDetail?.latestScoreDocumentId ?? null;
+  const isNotationPreviewReady = previewResult?.availability === 'ready';
 
   useEffect(() => {
     let isMounted = true;
@@ -241,16 +242,22 @@ export default function CaseDetailPage() {
                   }
                 />
               </label>
-              <div className="new-case-actions new-case-actions--inline">
-                <button
-                  type="button"
-                  className="new-case-actions__button new-case-actions__button--primary"
-                  disabled={isUploading || selectedFile === null}
-                  onClick={() => void handleUpload()}
-                >
-                  <span>{isUploading ? 'Uploading...' : 'Upload MusicXML'}</span>
-                </button>
-              </div>
+              {uploadResult?.acceptedStatus !== 'parsed' ? (
+                <div className="new-case-actions new-case-actions--inline score-preview__actions">
+                  <button
+                    type="button"
+                    className="new-case-actions__button new-case-actions__button--primary"
+                    disabled={isUploading || selectedFile === null}
+                    onClick={() => void handleUpload()}
+                  >
+                    <span>{isUploading ? 'Uploading...' : 'Upload MusicXML'}</span>
+                  </button>
+                  <Link href="/" className="new-case-actions__button">
+                    <ArrowLeft className="new-case-actions__button-icon" />
+                    <span>Back To Cases</span>
+                  </Link>
+                </div>
+              ) : null}
               {uploadResult?.acceptedStatus === 'parse_failed' ? (
                 <div className="interview-follow-up">
                   <div>
@@ -263,6 +270,93 @@ export default function CaseDetailPage() {
                     ) : null}
                   </div>
                 </div>
+              ) : null}
+              {isNotationPreviewReady ? (
+                <div className="new-case-actions new-case-actions--inline score-preview__actions">
+                  <button
+                    type="button"
+                    className="new-case-actions__button new-case-actions__button--primary"
+                    disabled={isGeneratingRecommendations}
+                    onClick={() => void handleGenerateRecommendations()}
+                  >
+                    <span>{isGeneratingRecommendations ? 'Generating...' : 'Load Recommendations'}</span>
+                  </button>
+                  <Link href="/" className="new-case-actions__button">
+                    <ArrowLeft className="new-case-actions__button-icon" />
+                    <span>Back To Cases</span>
+                  </Link>
+                </div>
+              ) : null}
+              {recommendationResult ? (
+                <section className="recommendation-workspace" aria-label="Recommendation review">
+                  <div className="recommendation-workspace__header">
+                    <div>
+                      <p className="new-case-hero__eyebrow">F8 · Recommendation Review</p>
+                      <h3 className="case-entry-section__title">Review and choose a recommendation</h3>
+                    </div>
+                  </div>
+                  {recommendationResult.status === 'blocked' && recommendationResult.failure ? (
+                    <div className="case-entry-error">
+                      <AlertCircle className="case-entry-error__icon" />
+                      <div className="case-entry-error__content">
+                        <p className="case-entry-error__text">{recommendationResult.failure.safeSummary}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="recommendation-grid">
+                    {recommendationResult.recommendations.map((item) => (
+                      <article
+                        key={item.recommendationId}
+                        className={`recommendation-card ${item.isPrimary ? 'recommendation-card--primary' : 'recommendation-card--secondary'} ${
+                          selectedRecommendationId === item.recommendationId ? 'recommendation-card--selected' : ''
+                        }`}
+                      >
+                        <div className="recommendation-card__header">
+                          <div>
+                            <p className="recommendation-card__eyebrow">
+                              {item.isPrimary ? 'Primary option' : 'Secondary option'}
+                            </p>
+                            <h4 className="recommendation-card__title">{item.label}</h4>
+                          </div>
+                          <span className={`recommendation-card__confidence recommendation-card__confidence--${item.confidence}`}>
+                            {item.confidence}
+                          </span>
+                        </div>
+                        <p className="recommendation-card__range">
+                          {item.targetRange.min} to {item.targetRange.max}
+                        </p>
+                        <p className="recommendation-card__reason">{item.summaryReason}</p>
+                        {item.recommendedKey ? (
+                          <p className="recommendation-card__meta">Recommended key: {item.recommendedKey}</p>
+                        ) : null}
+                        {item.warnings.length ? (
+                          <ul className="recommendation-card__warnings">
+                            {item.warnings.map((warning) => (
+                              <li
+                                key={`${item.recommendationId}-${warning.code}`}
+                                className={`recommendation-card__warning recommendation-card__warning--${warning.severity}`}
+                              >
+                                {warning.message}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="new-case-actions__button"
+                          onClick={() => handleSelectRecommendation(item)}
+                        >
+                          <span>{selectedRecommendationId === item.recommendationId ? 'Selected' : 'Select recommendation'}</span>
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                  {selectedRecommendationId ? (
+                    <p className="recommendation-workspace__selection">
+                      A recommendation is selected for the next transformation step. No automatic transformation has started.
+                    </p>
+                  ) : null}
+                </section>
               ) : null}
               {activeScoreDocumentId ? (
                 <section className="score-preview" aria-label="Score preview workspace">
@@ -338,100 +432,19 @@ export default function CaseDetailPage() {
                   </div>
                 </section>
               ) : null}
-              {uploadResult?.acceptedStatus === 'parsed' ? (
-                <div className="new-case-actions new-case-actions--inline">
-                  <button
-                    type="button"
-                    className="new-case-actions__button new-case-actions__button--primary"
-                    disabled={isGeneratingRecommendations}
-                    onClick={() => void handleGenerateRecommendations()}
-                  >
-                    <span>{isGeneratingRecommendations ? 'Generating...' : 'Load Recommendations'}</span>
-                  </button>
-                </div>
-              ) : null}
-              {recommendationResult ? (
-                <section className="recommendation-workspace" aria-label="Recommendation review">
-                  <div className="recommendation-workspace__header">
-                    <div>
-                      <p className="new-case-hero__eyebrow">F8 · Recommendation Review</p>
-                      <h3 className="case-entry-section__title">Review and choose a recommendation</h3>
-                    </div>
-                  </div>
-                  {recommendationResult.status === 'blocked' && recommendationResult.failure ? (
-                    <div className="case-entry-error">
-                      <AlertCircle className="case-entry-error__icon" />
-                      <div className="case-entry-error__content">
-                        <p className="case-entry-error__text">{recommendationResult.failure.safeSummary}</p>
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="recommendation-grid">
-                    {recommendationResult.recommendations.map((item) => (
-                      <article
-                        key={item.recommendationId}
-                        className={`recommendation-card ${item.isPrimary ? 'recommendation-card--primary' : 'recommendation-card--secondary'} ${
-                          selectedRecommendationId === item.recommendationId ? 'recommendation-card--selected' : ''
-                        }`}
-                      >
-                        <div className="recommendation-card__header">
-                          <div>
-                            <p className="recommendation-card__eyebrow">
-                              {item.isPrimary ? 'Primary option' : 'Secondary option'}
-                            </p>
-                            <h4 className="recommendation-card__title">{item.label}</h4>
-                          </div>
-                          <span className={`recommendation-card__confidence recommendation-card__confidence--${item.confidence}`}>
-                            {item.confidence}
-                          </span>
-                        </div>
-                        <p className="recommendation-card__range">
-                          {item.targetRange.min} to {item.targetRange.max}
-                        </p>
-                        <p className="recommendation-card__reason">{item.summaryReason}</p>
-                        {item.recommendedKey ? (
-                          <p className="recommendation-card__meta">Recommended key: {item.recommendedKey}</p>
-                        ) : null}
-                        {item.warnings.length ? (
-                          <ul className="recommendation-card__warnings">
-                            {item.warnings.map((warning) => (
-                              <li
-                                key={`${item.recommendationId}-${warning.code}`}
-                                className={`recommendation-card__warning recommendation-card__warning--${warning.severity}`}
-                              >
-                                {warning.message}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                        <button
-                          type="button"
-                          className="new-case-actions__button"
-                          onClick={() => handleSelectRecommendation(item)}
-                        >
-                          <span>{selectedRecommendationId === item.recommendationId ? 'Selected' : 'Select recommendation'}</span>
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                  {selectedRecommendationId ? (
-                    <p className="recommendation-workspace__selection">
-                      A recommendation is selected for the next transformation step. No automatic transformation has started.
-                    </p>
-                  ) : null}
-                </section>
-              ) : null}
             </div>
           ) : null}
         </section>
       ) : null}
 
-      <div className="new-case-actions">
-        <Link href="/" className="new-case-actions__button">
-          <ArrowLeft className="new-case-actions__button-icon" />
-          <span>Back To Cases</span>
-        </Link>
-      </div>
+      {caseDetail?.status !== 'ready_for_upload' ? (
+        <div className="new-case-actions">
+          <Link href="/" className="new-case-actions__button">
+            <ArrowLeft className="new-case-actions__button-icon" />
+            <span>Back To Cases</span>
+          </Link>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -127,6 +127,8 @@ Acceptance criteria:
 - no raw internal artifact details are exposed
 - allowed interactions are limited to viewport navigation such as scroll, page movement, and optional zoom
 - the preview is not limited to a metadata card or raw XML node display
+- primary workflow actions remain reachable without forcing the user to scroll through the full rendered score first
+- multi-page scores support explicit page navigation inside the preview workspace
 
 Out of scope:
 Result comparison.

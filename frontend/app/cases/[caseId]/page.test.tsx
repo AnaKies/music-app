@@ -8,7 +8,12 @@ import { recommendationsApi } from '@/shared/api/recommendations';
 import { scoresApi } from '@/shared/api/scores';
 
 vi.mock('@/components/score-preview/ScoreViewer', () => ({
-  ScoreViewer: ({ title }: { title: string }) => <div aria-label={`${title} score viewer`}>Mocked score viewer</div>,
+  ScoreViewer: ({ title }: { title: string }) => (
+    <div>
+      <div aria-label={`${title} score viewer`}>Mocked score viewer</div>
+      <div aria-label="Score preview pagination">Mocked pagination</div>
+    </div>
+  ),
 }));
 
 vi.mock('@/shared/api/cases', () => ({
@@ -239,6 +244,7 @@ describe('CaseDetailPage', () => {
     expect(screen.getByRole('tab', { name: /result/i })).toBeDisabled();
     expect(screen.getByLabelText('Read-only score preview')).toBeInTheDocument();
     expect(screen.getByLabelText(/score viewer/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Score preview pagination')).toBeInTheDocument();
     expect(screen.getByText('Mocked score viewer')).toBeInTheDocument();
     expect(screen.queryByText(/The uploaded score is ready for read-only preview\./i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^ready$/i)).not.toBeInTheDocument();
@@ -247,6 +253,11 @@ describe('CaseDetailPage', () => {
     expect(screen.queryByText(/^Notes$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Rests$/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/ピアノ/i)).not.toBeInTheDocument();
+    const actionRow = screen.getByRole('link', { name: /back to cases/i }).closest('div');
+    const preview = screen.getByLabelText('Score preview workspace');
+    expect(actionRow).not.toBeNull();
+    expect(preview.compareDocumentPosition(actionRow as Node) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(screen.getByRole('button', { name: /load recommendations/i })).toBeInTheDocument();
   });
 
   it('renders recommendation cards and allows explicit selection', async () => {
@@ -376,6 +387,9 @@ describe('CaseDetailPage', () => {
     });
 
     expect(await screen.findByText('Review and choose a recommendation')).toBeInTheDocument();
+    const recommendationWorkspace = screen.getByLabelText('Recommendation review');
+    const previewWorkspace = screen.getByLabelText('Score preview workspace');
+    expect(previewWorkspace.compareDocumentPosition(recommendationWorkspace) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
     expect(screen.getByText('Primary recommendation')).toBeInTheDocument();
     expect(screen.getByText('Instrument baseline alternative')).toBeInTheDocument();
     expect(screen.getByText('Register risk is present.')).toBeInTheDocument();
