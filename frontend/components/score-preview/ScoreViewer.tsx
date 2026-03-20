@@ -54,6 +54,8 @@ export function ScoreViewer({ previewAccess, title }: ScoreViewerProps) {
           drawSubtitle: false,
           drawComposer: false,
           drawCredits: false,
+          drawPartNames: false,
+          drawPartAbbreviations: false,
           backend: 'svg',
         });
 

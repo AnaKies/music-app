@@ -251,23 +251,11 @@ export default function CaseDetailPage() {
                   <span>{isUploading ? 'Uploading...' : 'Upload MusicXML'}</span>
                 </button>
               </div>
-              {uploadResult ? (
+              {uploadResult?.acceptedStatus === 'parse_failed' ? (
                 <div className="interview-follow-up">
                   <div>
-                    <p className="interview-follow-up__title">
-                      {uploadResult.acceptedStatus === 'parse_failed'
-                        ? 'Score parsing failed'
-                        : 'Score parsed successfully'}
-                    </p>
-                    <p className="interview-follow-up__text">
-                      {uploadResult.originalFilename} finished with status {uploadResult.acceptedStatus}.
-                    </p>
-                    {uploadResult.initialProcessingSnapshot.canonicalScoreSummary ? (
-                      <p className="interview-follow-up__text">
-                        Parsed {uploadResult.initialProcessingSnapshot.canonicalScoreSummary.partCount} part(s) across{' '}
-                        {uploadResult.initialProcessingSnapshot.canonicalScoreSummary.measureCount} measure(s).
-                      </p>
-                    ) : null}
+                    <p className="interview-follow-up__title">Score parsing failed</p>
+                    <p className="interview-follow-up__text">{uploadResult.originalFilename} could not be parsed safely.</p>
                     {uploadResult.initialProcessingSnapshot.parseFailureType ? (
                       <p className="interview-follow-up__text">
                         Failure type: {uploadResult.initialProcessingSnapshot.parseFailureType}
@@ -312,12 +300,14 @@ export default function CaseDetailPage() {
                       </div>
                     ) : previewResult ? (
                       <>
-                        <div className="score-preview__status">
-                          <span className={`score-preview__availability score-preview__availability--${previewResult.availability}`}>
-                            {previewResult.availability}
-                          </span>
-                          <p className="score-preview__summary">{previewResult.safeSummary}</p>
-                        </div>
+                        {previewResult.availability !== 'ready' ? (
+                          <div className="score-preview__status">
+                            <span className={`score-preview__availability score-preview__availability--${previewResult.availability}`}>
+                              {previewResult.availability}
+                            </span>
+                            <p className="score-preview__summary">{previewResult.safeSummary}</p>
+                          </div>
+                        ) : null}
                         <div className="score-preview__surface" aria-label="Read-only score preview">
                           <p className="score-preview__surface-label">Read-only preview</p>
                           <h4 className="score-preview__surface-title">
@@ -331,33 +321,6 @@ export default function CaseDetailPage() {
                               previewAccess={previewResult.previewAccess}
                               title={previewResult.canonicalScoreSummary?.title || previewResult.originalFilename || 'Uploaded score'}
                             />
-                          ) : null}
-                          {previewResult.canonicalScoreSummary ? (
-                            <dl className="score-preview__facts">
-                              <div>
-                                <dt>Parts</dt>
-                                <dd>{previewResult.canonicalScoreSummary.partCount}</dd>
-                              </div>
-                              <div>
-                                <dt>Measures</dt>
-                                <dd>{previewResult.canonicalScoreSummary.measureCount}</dd>
-                              </div>
-                              <div>
-                                <dt>Notes</dt>
-                                <dd>{previewResult.canonicalScoreSummary.noteCount}</dd>
-                              </div>
-                              <div>
-                                <dt>Rests</dt>
-                                <dd>{previewResult.canonicalScoreSummary.restCount}</dd>
-                              </div>
-                            </dl>
-                          ) : null}
-                          {previewResult.canonicalScoreSummary?.parts?.length ? (
-                            <ul className="score-preview__parts" aria-label="Preview parts">
-                              {previewResult.canonicalScoreSummary.parts.map((part) => (
-                                <li key={part.partId}>{part.name || part.partId}</li>
-                              ))}
-                            </ul>
                           ) : null}
                           {previewResult.failureCode ? (
                             <p className="score-preview__failure">Failure type: {previewResult.failureCode}</p>

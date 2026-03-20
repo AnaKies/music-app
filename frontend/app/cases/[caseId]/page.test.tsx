@@ -205,7 +205,7 @@ describe('CaseDetailPage', () => {
       pageCount: 1,
       revisionToken: '2026-03-20T10:00:00+00:00',
       safeSummary: 'The uploaded score is ready for read-only preview.',
-      previewAccess: 'preview:score-123:2026-03-20T10:00:00+00:00',
+      previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
       originalFilename: 'example.musicxml',
       canonicalScoreSummary: {
         schemaVersion: 'v1',
@@ -231,14 +231,22 @@ describe('CaseDetailPage', () => {
     await waitFor(() => {
       expect(scoresApi.getScorePreview).toHaveBeenCalledWith('score-123');
     });
-    expect(await screen.findByText('Score parsed successfully')).toBeInTheDocument();
-    expect(screen.getByText(/Parsed 1 part\(s\) across 1 measure\(s\)\./i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText('Score parsed successfully')).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Parsed 1 part\(s\) across 1 measure\(s\)\./i)).not.toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /original/i })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: /result/i })).toBeDisabled();
     expect(screen.getByLabelText('Read-only score preview')).toBeInTheDocument();
     expect(screen.getByLabelText(/score viewer/i)).toBeInTheDocument();
     expect(screen.getByText('Mocked score viewer')).toBeInTheDocument();
-    expect(screen.getByText(/The uploaded score is ready for read-only preview\./i)).toBeInTheDocument();
+    expect(screen.queryByText(/The uploaded score is ready for read-only preview\./i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^ready$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Parts$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Measures$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Notes$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Rests$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ピアノ/i)).not.toBeInTheDocument();
   });
 
   it('renders recommendation cards and allows explicit selection', async () => {
@@ -310,7 +318,7 @@ describe('CaseDetailPage', () => {
       pageCount: 1,
       revisionToken: '2026-03-20T10:00:00+00:00',
       safeSummary: 'The uploaded score is ready for read-only preview.',
-      previewAccess: 'preview:score-123:2026-03-20T10:00:00+00:00',
+      previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
       originalFilename: 'example.musicxml',
       canonicalScoreSummary: {
         schemaVersion: 'v1',

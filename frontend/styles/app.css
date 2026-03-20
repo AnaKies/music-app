@@ -1070,48 +1070,6 @@ select {
   font-size: 1.2rem;
 }
 
-.score-preview__facts {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-}
-
-.score-preview__facts div {
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(33, 48, 77, 0.05);
-}
-
-.score-preview__facts dt {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  margin-bottom: 6px;
-}
-
-.score-preview__facts dd {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.score-preview__parts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.score-preview__parts li {
-  border-radius: 999px;
-  background: rgba(188, 123, 74, 0.12);
-  color: #7b4828;
-  padding: 8px 12px;
-  font-weight: 600;
-}
-
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -1144,8 +1102,7 @@ select {
 
 @media (max-width: 880px) {
   .interview-layout,
-  .interview-range-grid,
-  .score-preview__facts {
+  .interview-range-grid {
     grid-template-columns: 1fr;
   }
 }
