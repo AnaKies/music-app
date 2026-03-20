@@ -1,40 +1,13 @@
 # Task Briefs F8b
 
 Reference: [Task Briefs Index](./index.md)
-Related overview: [Junior Task Breakdown](../junior-task-breakdown.md)
+Related overview: [Overview](../overview.md)
 Related features: [Architecture Features](../../architecture/features.md)
 
 ## F8b. Safe Score Preview And Result Comparison
 
-### Architect-1
-
-Objective:
-Define the safe preview boundary, placement in the workflow, and rendering constraints.
-
-Context:
-The product currently supports upload, recommendation review, transformation, export, and download, but it does not yet define how a score preview should appear without violating safety or MVP scope.
-
-Deliverable:
-A concise architecture decision for where preview lives, which artifacts it may show, and which viewer capabilities remain out of scope.
-
-Gating note:
-Architect-1 is the gating task for this feature. No frontend or backend implementation should start before this decision is approved.
-
-Dependencies:
-None.
-
-Acceptance criteria:
-
-- preview is explicitly read-only
-- the feature sits cleanly between recommendation review and later result retrieval
-- editing and note-level diffing remain out of scope
-- preview is documented as one capability with separate source-preview and result-preview availability timing
-
-Out of scope:
-Implementation details of a specific viewer library.
-
-Suggested verification:
-Architecture review against feature flow and safety model.
+Architecture note:
+The preview boundary, placement in the workflow, and safety constraints for F8b are already defined in the architecture documents. The delivery tasks below implement against that approved architecture and do not reopen it as an in-feature task.
 
 ### Backend-25a
 
@@ -48,7 +21,7 @@ Deliverable:
 A backend-readable field or endpoint that tells the frontend whether source preview is available and safe to request.
 
 Dependencies:
-Architect-1.
+Approved F8b architecture boundary.
 
 Acceptance criteria:
 
@@ -91,7 +64,7 @@ Deliverable:
 A backend-readable field or endpoint that exposes result-preview readiness and typed preview failure states.
 
 Dependencies:
-Architect-1 and the approved result-preview contract after F10 result export.
+Approved F8b architecture boundary and the approved result-preview contract after F10 result export.
 
 Acceptance criteria:
 
@@ -118,7 +91,7 @@ Deliverable:
 A screen or section shell for score preview with room for source, result, loading, and failure states.
 
 Dependencies:
-Architect-1.
+Approved F8b architecture boundary.
 
 Acceptance criteria:
 
@@ -231,7 +204,7 @@ Deliverable:
 A short review confirming the preview boundaries or flagging required restrictions.
 
 Dependencies:
-Architect-1 and the proposed preview contract.
+Approved F8b architecture boundary and the implemented preview contract.
 
 Acceptance criteria:
 

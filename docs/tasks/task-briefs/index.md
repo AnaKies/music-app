@@ -1,7 +1,7 @@
 # Task Briefs Index
 
-Reference: [Delivery Index](../index.md)
-Related overview: [Junior Task Breakdown](../junior-task-breakdown.md)
+Reference: [Tasks Index](../index.md)
+Related overview: [Overview](../overview.md)
 
 ## Purpose
 
@@ -31,4 +31,4 @@ Each task brief should include:
 
 ## Navigation
 
-This file is the main navigation entry for detailed delivery task briefs in Obsidian.
+This file is the main navigation entry for detailed task briefs in Obsidian.

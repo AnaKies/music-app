@@ -5,7 +5,7 @@ Related context: [System Context](./system-context.md)
 Related modules: [Module Design](./module-design.md)
 Related interfaces: [Interfaces](./interfaces.md)
 Related frontend state mapping: [Frontend State Mapping](./frontend-state-mapping.md)
-Related delivery planning: [Junior Task Breakdown](../delivery/junior-task-breakdown.md)
+Related task planning: [Overview](../tasks/overview.md)
 
 ## Purpose
 
@@ -435,4 +435,4 @@ Natural follow-up features after the first usable MVP include:
 ## Delivery Relationship
 
 This document owns feature slicing at architecture level.
-Junior-oriented execution breakdown, parallel tasking, and team delivery planning belong in [Junior Task Breakdown](../delivery/junior-task-breakdown.md).
+Task-oriented execution breakdown, parallel tasking, and team planning belong in [Overview](../tasks/overview.md).

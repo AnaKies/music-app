@@ -3,7 +3,7 @@
 Related overview: [Architecture Overview](./overview.md)  
 Related modules: [Module Design](./module-design.md)  
 Related features: [Architecture Features](./features.md)  
-Related delivery planning: [Junior Task Breakdown](../delivery/junior-task-breakdown.md)
+Related task planning: [Overview](../tasks/overview.md)
 
 ## Purpose
 
@@ -269,8 +269,8 @@ Only one actively assigned junior per hotspot file at a time, with review before
 
 This structure should be used together with the delivery planning:
 
-- [Junior Task Breakdown](../delivery/junior-task-breakdown.md)
-- [Task Briefs Index](../delivery/task-briefs/index.md)
+- [Overview](../tasks/overview.md)
+- [Task Briefs Index](../tasks/task-briefs/index.md)
 
 The delivery documents define who can work in parallel.
 This document defines where that work should live in the repository.

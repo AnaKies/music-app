@@ -1,6 +1,6 @@
-# Junior Task Breakdown
+# Overview
 
-Reference: [Delivery Index](./index.md)
+Reference: [Tasks Index](./index.md)
 Detailed briefs: [Task Briefs Index](./task-briefs/index.md)
 Related features: [Architecture Features](../architecture/features.md)
 Related frontend plan: [Frontend Implementation Plan](../frontend/implementation-plan.md)
@@ -23,7 +23,7 @@ It is intended for teams with many junior developers and assumes that tasks shou
 - keep contracts and architecture decisions outside the task unless the task is explicitly about implementing an already approved contract
 - use test and verification tasks as a major parallelization lane when implementation ownership would otherwise collide
 
-## Delivery Decomposition Diagram
+## Task Decomposition Diagram
 
 ```mermaid
 flowchart TD
@@ -78,6 +78,9 @@ Detailed assignable briefs for every task live in [Task Briefs Index](./task-bri
 Goal:
 Let the user create a new transposition case or continue an existing active one.
 
+Manual user test:
+[F1 in User Tests](./user-tests.md#ut-f1)
+
 Tasks:
 
 - [`Frontend-1`](./task-briefs/f1-f4.md#frontend-1) `[Parallel now]` Create the case-entry screen scaffold.
@@ -98,6 +101,9 @@ Parallelization note:
 
 Goal:
 Run the AI-guided question flow that collects instrument and playability constraints.
+
+Manual user test:
+[F2 in User Tests](./user-tests.md#ut-f2)
 
 Tasks:
 
@@ -129,6 +135,9 @@ Start with `AI-1`, `AI-2`, and `Frontend-5`. Once the question and answer contra
 Goal:
 Store confirmed case constraints and expose when a case is ready for upload.
 
+Manual user test:
+[F3 in User Tests](./user-tests.md#ut-f3)
+
 Tasks:
 
 - [`Backend-7`](./task-briefs/f1-f4.md#backend-7) `[Parallel now]` Implement the case-status model.
@@ -147,6 +156,9 @@ Most backend persistence tasks can start together. `AI-5` and the tests should f
 
 Goal:
 Accept a MusicXML upload that is linked to a ready transposition case.
+
+Manual user test:
+[F4 in User Tests](./user-tests.md#ut-f4)
 
 Tasks:
 
@@ -172,6 +184,9 @@ This feature parallelizes well: backend route work, safety upload rules, and upl
 Goal:
 Turn the uploaded MusicXML file into the canonical score model.
 
+Manual user test:
+[F5 in User Tests](./user-tests.md#ut-f5)
+
 Tasks:
 
 - [`Backend-15`](./task-briefs/f5-f8.md#backend-15) `[Parallel now]` Add a parser wrapper.
@@ -190,6 +205,9 @@ Parsing tasks are mostly backend-first. Once the parser wrapper and failure cont
 
 Goal:
 Assemble the backend-owned context needed for AI recommendation.
+
+Manual user test:
+[F6 in User Tests](./user-tests.md#ut-f6)
 
 Tasks:
 
@@ -210,6 +228,9 @@ This feature is highly parallelizable inside the backend, but all test tasks sho
 
 Goal:
 Produce one or more recommended target ranges for the uploaded score.
+
+Manual user test:
+[F7 in User Tests](./user-tests.md#ut-f7)
 
 Tasks:
 
@@ -234,6 +255,9 @@ Parallelization note:
 Goal:
 Let the user inspect recommendation options and explicitly choose one.
 
+Manual user test:
+[F8 in User Tests](./user-tests.md#ut-f8)
+
 Tasks:
 
 - [`Frontend-12`](./task-briefs/f5-f8.md#frontend-12) `[Parallel now]` Create the recommendation-review screen scaffold.
@@ -255,26 +279,31 @@ Parallelization note:
 Goal:
 Let the user inspect the uploaded score before transformation and inspect the result score only after exported result artifacts are available.
 
+Manual user test:
+[F8b in User Tests](./user-tests.md#ut-f8b)
+
 Tasks:
 
-- [`Architect-1`](./task-briefs/f8b-score-preview.md#architect-1) `[Parallel now]` Define the preview boundary, route placement, and safety constraints.
-- [`Backend-25a`](./task-briefs/f8b-score-preview.md#backend-25a) `[After architecture]` Expose source-score preview availability and safe preview metadata.
-- [`Backend-25b`](./task-briefs/f8b-score-preview.md#backend-25b) `[After architecture]` Expose result-score preview availability and safe preview metadata.
-- [`Frontend-17a`](./task-briefs/f8b-score-preview.md#frontend-17a) `[After architecture]` Create the preview workspace scaffold.
+- [`Backend-25a`](./task-briefs/f8b-score-preview.md#backend-25a) `[Parallel now]` Expose source-score preview availability and safe preview metadata.
+- [`Backend-25b`](./task-briefs/f8b-score-preview.md#backend-25b) `[After result contract]` Expose result-score preview availability and safe preview metadata.
+- [`Frontend-17a`](./task-briefs/f8b-score-preview.md#frontend-17a) `[Parallel now]` Create the preview workspace scaffold.
 - [`Frontend-17b`](./task-briefs/f8b-score-preview.md#frontend-17b) `[After backend]` Add source-score preview rendering.
 - [`Frontend-17c`](./task-briefs/f8b-score-preview.md#frontend-17c) `[After backend]` Add result-score preview rendering.
 - [`Frontend-17d`](./task-briefs/f8b-score-preview.md#frontend-17d) `[After backend]` Add the `Original` versus `Result` toggle or comparison mode.
-- [`Safety-5a`](./task-briefs/f8b-score-preview.md#safety-5a) `[After architecture]` Review that the preview stays read-only and presentation-safe.
+- [`Safety-5a`](./task-briefs/f8b-score-preview.md#safety-5a) `[After backend]` Review that the preview stays read-only and presentation-safe.
 - [`Test-28a`](./task-briefs/f8b-score-preview.md#test-28a) `[After frontend]` Add a UI test for source-score preview.
 - [`Test-28b`](./task-briefs/f8b-score-preview.md#test-28b) `[After frontend]` Add a UI test for result-score preview and preview failure states.
 
 Parallelization note:
-Architecture and safety boundaries should be agreed first. Source preview can proceed after that. Result preview work must wait for the approved result-artifact and read-model contract from later delivery stages.
+The architecture boundary for F8b is already defined in the architecture documents. Source preview metadata and the frontend scaffold can start immediately. Result preview work must wait for the approved result-artifact and read-model contract from later delivery stages.
 
 ## [F9. Deterministic Transformation](./task-briefs/f9-f12.md#f9-deterministic-transformation)
 
 Goal:
 Apply the selected target range through backend-owned deterministic transposition.
+
+Manual user test:
+[F9 in User Tests](./user-tests.md#ut-f9)
 
 Tasks:
 
@@ -296,6 +325,9 @@ The transformation scaffold, route, and selection validation can start together.
 Goal:
 Convert transformed score data into output MusicXML and store the result artifact.
 
+Manual user test:
+[F10 in User Tests](./user-tests.md#ut-f10)
+
 Tasks:
 
 - [`Backend-30`](./task-briefs/f9-f12.md#backend-30) `[Parallel now]` Create the export-service scaffold.
@@ -313,6 +345,9 @@ The export-service scaffold can start alone, but the rest depends on stable tran
 
 Goal:
 Expose durable frontend-readable status snapshots for score and transformation flows.
+
+Manual user test:
+[F11 in User Tests](./user-tests.md#ut-f11)
 
 Tasks:
 
@@ -339,6 +374,9 @@ Start with status routes and base status mapping. Frontend polling, metadata ren
 Goal:
 Let the user download the transformed MusicXML result.
 
+Manual user test:
+[F12 in User Tests](./user-tests.md#ut-f12)
+
 Tasks:
 
 - [`Frontend-21`](./task-briefs/f9-f12.md#frontend-21) `[Parallel now]` Create the result screen scaffold.
@@ -355,6 +393,9 @@ The result screen scaffold and download endpoint can start together. UI wiring a
 
 Goal:
 Allow the user to change constraints or reset a case without creating a new architecture path.
+
+Manual user test:
+[F13 in User Tests](./user-tests.md#ut-f13)
 
 Tasks:
 
@@ -376,6 +417,9 @@ Edit and reset UI scaffolds can start with backend reset/edit semantics, but re-
 Goal:
 Prevent the user from transforming against recommendations that were generated for outdated constraints.
 
+Manual user test:
+[F14 in User Tests](./user-tests.md#ut-f14)
+
 Tasks:
 
 - [`Backend-44`](./task-briefs/f13-f16.md#backend-44) `[Parallel now]` Mark recommendation snapshots as stale after relevant case edits.
@@ -394,6 +438,9 @@ The stale flag can start immediately in the backend. Almost everything else depe
 
 Goal:
 Support retry behavior for recoverable parsing, recommendation, or transformation failures.
+
+Manual user test:
+[F15 in User Tests](./user-tests.md#ut-f15)
 
 Tasks:
 
@@ -414,6 +461,9 @@ Failure-class work starts first. UI and test work should wait until retryability
 
 Goal:
 Verify that preview and production-like environments preserve the documented MVP workflow and typed runtime-state behavior after deployment.
+
+Manual user test:
+[F16 in User Tests](./user-tests.md#ut-f16)
 
 Tasks:
 
