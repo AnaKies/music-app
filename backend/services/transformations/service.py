@@ -115,17 +115,7 @@ def create_transformation(
     db.refresh(transformation_job)
 
     return TransformationResponse(
-        transformationJobId=transformation_job.id,
-        status=transformation_job.status,
-        transpositionCaseId=transposition_case_id,
-        scoreDocumentId=score_document_id,
-        recommendationId=recommendation_id,
-        selectedRangeMin=transformation_job.selected_range_min,
-        selectedRangeMax=transformation_job.selected_range_max,
-        semitoneShift=transformation_job.semitone_shift,
-        safeSummary=transformation_job.safe_summary,
-        warnings=[TransformationWarning(**warning) for warning in (transformation_job.warnings or [])],
-        createdAt=transformation_job.created_at,
+        **_build_transformation_payload(transformation_job),
     )
 
 
@@ -157,3 +147,38 @@ def get_transformation_preview_content(
         content=ensure_xml_declaration(transformation_job.transformed_musicxml),
         media_type="application/vnd.recordare.musicxml+xml",
     )
+
+
+def get_transformation_read(
+    db: Session,
+    transformation_job_id: str,
+) -> TransformationResponse:
+    transformation_job = db.query(TransformationJob).filter(TransformationJob.id == transformation_job_id).first()
+    if transformation_job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Transformation with id {transformation_job_id} not found.",
+        )
+
+    return TransformationResponse(**_build_transformation_payload(transformation_job))
+
+
+def _build_transformation_payload(transformation_job: TransformationJob) -> dict:
+    return {
+        "transformationJobId": transformation_job.id,
+        "status": transformation_job.status,
+        "transpositionCaseId": transformation_job.transposition_case_id,
+        "scoreDocumentId": transformation_job.score_document_id,
+        "recommendationId": transformation_job.recommendation_id,
+        "selectedRangeMin": transformation_job.selected_range_min,
+        "selectedRangeMax": transformation_job.selected_range_max,
+        "semitoneShift": transformation_job.semitone_shift,
+        "safeSummary": transformation_job.safe_summary,
+        "resultFilename": transformation_job.result_filename,
+        "resultPreviewRevisionToken": transformation_job.result_revision_token,
+        "isRetryable": False,
+        "failureCode": None,
+        "failureSeverity": None,
+        "warnings": [TransformationWarning(**warning) for warning in (transformation_job.warnings or [])],
+        "createdAt": transformation_job.created_at,
+    }

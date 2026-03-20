@@ -67,6 +67,7 @@ export interface ScoreReadResponse {
   processingStatus: ScoreProcessingStatus;
   originalFilename: string;
   safeSummary: string;
+  latestTransformationJobId?: string | null;
   sourcePreview?: ScorePreviewResponse | null;
   resultPreview?: ScorePreviewResponse | null;
 }

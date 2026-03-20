@@ -33,6 +33,8 @@ export default function CaseDetailPage() {
   const [selectedRecommendationId, setSelectedRecommendationId] = useState<string | null>(null);
   const [transformationResult, setTransformationResult] = useState<TransformationResponse | null>(null);
   const [isTransforming, setIsTransforming] = useState(false);
+  const [isLoadingTransformation, setIsLoadingTransformation] = useState(false);
+  const [transformationError, setTransformationError] = useState<string | null>(null);
   const [activePreviewMode, setActivePreviewMode] = useState<'original' | 'result'>('original');
 
   useEffect(() => {
@@ -127,6 +129,49 @@ export default function CaseDetailPage() {
     };
   }, [activeScoreDocumentId]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadTransformation(transformationJobId: string) {
+      try {
+        setIsLoadingTransformation(true);
+        setTransformationError(null);
+        const response = await transformationsApi.getTransformation(transformationJobId);
+        if (isMounted) {
+          setTransformationResult(response);
+        }
+      } catch (caughtError) {
+        if (!isMounted) {
+          return;
+        }
+
+        if (caughtError instanceof ApiError) {
+          setTransformationError(caughtError.message);
+        } else {
+          setTransformationError('Could not load the transformation status. Please try again.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingTransformation(false);
+        }
+      }
+    }
+
+    if (!scoreResult?.latestTransformationJobId) {
+      if (!isTransforming) {
+        setTransformationResult(null);
+      }
+      setTransformationError(null);
+      return;
+    }
+
+    void loadTransformation(scoreResult.latestTransformationJobId);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [scoreResult?.latestTransformationJobId, isTransforming]);
+
   async function handleUpload() {
     if (!caseDetail || !selectedFile) {
       return;
@@ -197,9 +242,9 @@ export default function CaseDetailPage() {
         activeScoreDocumentId,
         selectedRecommendationId
       );
-      setTransformationResult(result);
       const refreshedScore = await scoresApi.getScore(activeScoreDocumentId);
       setScoreResult(refreshedScore);
+      setTransformationResult(result);
       setActivePreviewMode('result');
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
@@ -437,7 +482,62 @@ export default function CaseDetailPage() {
                         ) : null}
                       </div>
                     </div>
+                  ) : isLoadingTransformation ? (
+                    <div className="interview-follow-up">
+                      <div>
+                        <p className="interview-follow-up__title">Deterministic transformation</p>
+                        <p className="interview-follow-up__text">Loading the latest transformation status.</p>
+                      </div>
+                    </div>
+                  ) : transformationError ? (
+                    <div className="interview-follow-up">
+                      <div>
+                        <p className="interview-follow-up__title">Deterministic transformation</p>
+                        <p className="interview-follow-up__text">{transformationError}</p>
+                      </div>
+                    </div>
                   ) : null}
+                </section>
+              ) : null}
+              {!recommendationResult && (transformationResult || isLoadingTransformation || transformationError) ? (
+                <section className="recommendation-workspace" aria-label="Transformation status">
+                  {transformationResult ? (
+                    <div className="interview-follow-up">
+                      <div>
+                        <p className="interview-follow-up__title">Deterministic transformation</p>
+                        <p className="interview-follow-up__text">{transformationResult.safeSummary}</p>
+                        <p className="interview-follow-up__text">
+                          Applied range: {transformationResult.selectedRangeMin} to {transformationResult.selectedRangeMax}
+                        </p>
+                        {transformationResult.semitoneShift !== null && transformationResult.semitoneShift !== undefined ? (
+                          <p className="interview-follow-up__text">
+                            Semitone shift: {transformationResult.semitoneShift}
+                          </p>
+                        ) : null}
+                        {transformationResult.warnings.length ? (
+                          <ul className="recommendation-card__warnings">
+                            {transformationResult.warnings.map((warning) => (
+                              <li
+                                key={`${transformationResult.transformationJobId}-${warning.code}`}
+                                className={`recommendation-card__warning recommendation-card__warning--${warning.severity}`}
+                              >
+                                {warning.message}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="interview-follow-up">
+                      <div>
+                        <p className="interview-follow-up__title">Deterministic transformation</p>
+                        <p className="interview-follow-up__text">
+                          {transformationError || 'Loading the latest transformation status.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </section>
               ) : null}
               {activeScoreDocumentId ? (

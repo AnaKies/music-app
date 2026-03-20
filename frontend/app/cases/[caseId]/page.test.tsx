@@ -46,6 +46,7 @@ vi.mock('@/shared/api/recommendations', () => ({
 vi.mock('@/shared/api/transformations', () => ({
   transformationsApi: {
     runTransformation: vi.fn(),
+    getTransformation: vi.fn(),
   },
 }));
 
@@ -221,6 +222,7 @@ describe('CaseDetailPage', () => {
       processingStatus: 'recommendation_pending',
       originalFilename: 'example.musicxml',
       safeSummary: 'The score is parsed and ready for recommendation generation.',
+      latestTransformationJobId: null,
       sourcePreview: {
         scoreDocumentId: 'score-123',
         artifactRole: 'source',
@@ -356,6 +358,7 @@ describe('CaseDetailPage', () => {
         processingStatus: 'recommendation_pending',
         originalFilename: 'example.musicxml',
         safeSummary: 'The score is parsed and ready for recommendation generation.',
+        latestTransformationJobId: null,
         sourcePreview: {
           scoreDocumentId: 'score-123',
           artifactRole: 'source',
@@ -391,6 +394,7 @@ describe('CaseDetailPage', () => {
         processingStatus: 'completed',
         originalFilename: 'example.musicxml',
         safeSummary: 'The score has a transformed result artifact ready.',
+        latestTransformationJobId: 'job-1',
         sourcePreview: {
           scoreDocumentId: 'score-123',
           artifactRole: 'source',
@@ -470,6 +474,29 @@ describe('CaseDetailPage', () => {
       selectedRangeMax: 'D5',
       semitoneShift: -2,
       safeSummary: 'The deterministic transformation completed successfully.',
+      resultFilename: 'example-transformed.musicxml',
+      resultPreviewRevisionToken: '2026-03-20T11:00:00+00:00',
+      isRetryable: false,
+      failureCode: null,
+      failureSeverity: null,
+      warnings: [],
+      createdAt: '2026-03-20T11:00:00Z',
+    });
+    vi.mocked(transformationsApi.getTransformation).mockResolvedValue({
+      transformationJobId: 'job-1',
+      status: 'completed',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendationId: 'rec-primary',
+      selectedRangeMin: 'G3',
+      selectedRangeMax: 'D5',
+      semitoneShift: -2,
+      safeSummary: 'The deterministic transformation completed successfully.',
+      resultFilename: 'example-transformed.musicxml',
+      resultPreviewRevisionToken: '2026-03-20T11:00:00+00:00',
+      isRetryable: false,
+      failureCode: null,
+      failureSeverity: null,
       warnings: [],
       createdAt: '2026-03-20T11:00:00Z',
     });
@@ -509,6 +536,9 @@ describe('CaseDetailPage', () => {
         'rec-primary'
       );
     });
+    await waitFor(() => {
+      expect(transformationsApi.getTransformation).toHaveBeenCalledWith('job-1');
+    });
     expect(await screen.findByText(/The deterministic transformation completed successfully\./i)).toBeInTheDocument();
     expect(await screen.findByRole('tab', { name: /result/i })).toHaveAttribute('aria-selected', 'true');
   });
@@ -539,6 +569,7 @@ describe('CaseDetailPage', () => {
       processingStatus: 'failed',
       originalFilename: 'broken.musicxml',
       safeSummary: 'The score flow failed before a recommendation-ready state was reached.',
+      latestTransformationJobId: null,
       sourcePreview: {
         scoreDocumentId: 'score-failed',
         artifactRole: 'source',
@@ -593,6 +624,7 @@ describe('CaseDetailPage', () => {
       processingStatus: 'recommendation_pending',
       originalFilename: 'example.musicxml',
       safeSummary: 'The score is parsed and ready for recommendation generation.',
+      latestTransformationJobId: null,
       sourcePreview: {
         scoreDocumentId: 'score-123',
         artifactRole: 'source',
@@ -630,6 +662,147 @@ describe('CaseDetailPage', () => {
     await waitFor(() => {
       expect(recommendationsApi.generateRecommendations).toHaveBeenCalledWith('existing-case-1', 'score-123');
     });
+  });
+
+  it('reloads the latest persisted transformation status for an existing score', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: 'score-123',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'G3',
+        comfort_range_max: 'D5',
+      },
+    });
+    vi.mocked(scoresApi.getScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      transpositionCaseId: 'existing-case-1',
+      processingStatus: 'completed',
+      originalFilename: 'example.musicxml',
+      safeSummary: 'The score has a transformed result artifact ready.',
+      latestTransformationJobId: 'job-1',
+      sourcePreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'source',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'The uploaded score is ready for read-only preview.',
+        previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+        originalFilename: 'example.musicxml',
+        canonicalScoreSummary: null,
+      },
+      resultPreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'result',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T11:00:00+00:00',
+        safeSummary: 'A transformed result artifact is ready for read-only preview.',
+        previewAccess: '/transformations/job-1/preview/content?revision=2026-03-20T11%3A00%3A00%2B00%3A00',
+        originalFilename: 'example-transformed.musicxml',
+        canonicalScoreSummary: null,
+      },
+    });
+    vi.mocked(transformationsApi.getTransformation).mockResolvedValue({
+      transformationJobId: 'job-1',
+      status: 'completed',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendationId: 'rec-primary',
+      selectedRangeMin: 'G3',
+      selectedRangeMax: 'D5',
+      semitoneShift: -2,
+      safeSummary: 'The deterministic transformation completed successfully.',
+      resultFilename: 'example-transformed.musicxml',
+      resultPreviewRevisionToken: '2026-03-20T11:00:00+00:00',
+      isRetryable: false,
+      failureCode: null,
+      failureSeverity: null,
+      warnings: [],
+      createdAt: '2026-03-20T11:00:00Z',
+    });
+
+    render(<CaseDetailPage />);
+
+    await waitFor(() => {
+      expect(transformationsApi.getTransformation).toHaveBeenCalledWith('job-1');
+    });
+    expect(await screen.findByText(/The deterministic transformation completed successfully\./i)).toBeInTheDocument();
+  });
+
+  it('keeps the case page visible when only the transformation status load fails', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: 'score-123',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'G3',
+        comfort_range_max: 'D5',
+      },
+    });
+    vi.mocked(scoresApi.getScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      transpositionCaseId: 'existing-case-1',
+      processingStatus: 'completed',
+      originalFilename: 'example.musicxml',
+      safeSummary: 'The score has a transformed result artifact ready.',
+      latestTransformationJobId: 'job-1',
+      sourcePreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'source',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'The uploaded score is ready for read-only preview.',
+        previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+        originalFilename: 'example.musicxml',
+        canonicalScoreSummary: null,
+      },
+      resultPreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'result',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T11:00:00+00:00',
+        safeSummary: 'A transformed result artifact is ready for read-only preview.',
+        previewAccess: '/transformations/job-1/preview/content?revision=2026-03-20T11%3A00%3A00%2B00%3A00',
+        originalFilename: 'example-transformed.musicxml',
+        canonicalScoreSummary: null,
+      },
+    });
+    vi.mocked(transformationsApi.getTransformation).mockRejectedValue(new Error('transformation read endpoint down'));
+
+    render(<CaseDetailPage />);
+
+    expect(await screen.findByText('Case overview')).toBeInTheDocument();
+    expect(await screen.findByText(/Could not load the transformation status/i)).toBeInTheDocument();
+    expect(screen.getByText('trumpet-bb')).toBeInTheDocument();
+    expect(screen.queryByText(/Could not load the selected case/i)).not.toBeInTheDocument();
   });
 
   it('keeps the case overview visible when only the preview load fails', async () => {

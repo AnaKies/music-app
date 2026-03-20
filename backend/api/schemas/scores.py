@@ -93,5 +93,6 @@ class ScoreReadResponse(BaseModel):
     processingStatus: ScoreProcessingStatus
     originalFilename: str
     safeSummary: str
+    latestTransformationJobId: Optional[str] = None
     sourcePreview: Optional[ScorePreviewResponse] = None
     resultPreview: Optional[ScorePreviewResponse] = None

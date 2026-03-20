@@ -40,5 +40,10 @@ class TransformationResponse(BaseModel):
     selectedRangeMax: str
     semitoneShift: Optional[int] = None
     safeSummary: str
+    resultFilename: Optional[str] = None
+    resultPreviewRevisionToken: Optional[str] = None
+    isRetryable: bool = False
+    failureCode: Optional[str] = None
+    failureSeverity: Optional[str] = None
     warnings: List[TransformationWarning]
     createdAt: datetime

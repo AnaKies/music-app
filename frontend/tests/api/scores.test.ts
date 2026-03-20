@@ -98,6 +98,7 @@ describe('Scores API Client', () => {
         processingStatus: 'recommendation_pending',
         originalFilename: 'example.musicxml',
         safeSummary: 'The score is parsed and ready for recommendation generation.',
+        latestTransformationJobId: 'job-123',
         sourcePreview: {
           scoreDocumentId: 'score-123',
           artifactRole: 'source',
@@ -133,6 +134,7 @@ describe('Scores API Client', () => {
 
     expect(mockFetch).toHaveBeenCalledWith('http://localhost:8000/scores/score-123');
     expect(result.processingStatus).toBe('recommendation_pending');
+    expect(result.latestTransformationJobId).toBe('job-123');
     expect(result.sourcePreview?.availability).toBe('ready');
   });
 });

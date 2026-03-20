@@ -320,6 +320,7 @@ def test_get_scores_read_returns_ready_result_preview_after_exported_transformat
 
         assert response.status_code == 200
         payload = response.json()
+        assert payload["latestTransformationJobId"] == "job-result-preview"
         assert payload["resultPreview"]["availability"] == "ready"
         assert payload["resultPreview"]["previewAccess"] == (
             "/transformations/job-result-preview/preview/content?revision=2026-03-20T18%3A00%3A00%2B00%3A00"

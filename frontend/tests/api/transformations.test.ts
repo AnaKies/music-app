@@ -28,6 +28,11 @@ describe('Transformations API Client', () => {
         selectedRangeMax: 'D5',
         semitoneShift: -2,
         safeSummary: 'The deterministic transformation completed successfully.',
+        resultFilename: 'example-transformed.musicxml',
+        resultPreviewRevisionToken: '2026-03-20T10:00:00+00:00',
+        isRetryable: false,
+        failureCode: null,
+        failureSeverity: null,
         warnings: [],
         createdAt: '2026-03-20T10:00:00Z',
       }),
@@ -43,5 +48,35 @@ describe('Transformations API Client', () => {
     );
     expect(result.status).toBe('completed');
     expect(result.recommendationId).toBe('rec-123');
+  });
+
+  it('reads a durable transformation status snapshot', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        transformationJobId: 'job-123',
+        status: 'completed',
+        transpositionCaseId: 'case-123',
+        scoreDocumentId: 'score-123',
+        recommendationId: 'rec-123',
+        selectedRangeMin: 'G3',
+        selectedRangeMax: 'D5',
+        semitoneShift: -2,
+        safeSummary: 'The deterministic transformation completed successfully.',
+        resultFilename: 'example-transformed.musicxml',
+        resultPreviewRevisionToken: '2026-03-20T10:00:00+00:00',
+        isRetryable: false,
+        failureCode: null,
+        failureSeverity: null,
+        warnings: [],
+        createdAt: '2026-03-20T10:00:00Z',
+      }),
+    });
+
+    const result = await transformationsApi.getTransformation('job-123');
+
+    expect(mockFetch).toHaveBeenCalledWith('http://localhost:8000/transformations/job-123');
+    expect(result.transformationJobId).toBe('job-123');
+    expect(result.status).toBe('completed');
   });
 });

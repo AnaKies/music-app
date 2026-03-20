@@ -181,6 +181,62 @@ def test_post_transformations_rejects_unknown_or_stale_recommendation():
         connection.close()
 
 
+def test_get_transformations_reads_latest_persisted_transformation_status():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_score_and_recommendation(session)
+    transformation_job = TransformationJob(
+        id="job-read-1",
+        transposition_case_id="case-1",
+        score_document_id="score-1",
+        recommendation_id="rec-1",
+        status="completed",
+        selected_range_min="G3",
+        selected_range_max="D5",
+        semitone_shift=-2,
+        safe_summary="The deterministic transformation completed successfully.",
+        warnings=[{"code": "range_overflow", "severity": "warning", "message": "Range warning"}],
+        transformed_musicxml="<?xml version='1.0' encoding='utf-8'?><score-partwise version='4.0'></score-partwise>",
+        result_storage_uri="local://transformations/job-read-1/example-transformed.musicxml",
+        result_filename="example-transformed.musicxml",
+        result_revision_token="2026-03-20T20:00:00+00:00",
+    )
+    session.add(transformation_job)
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/transformations/job-read-1")
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "transformationJobId": "job-read-1",
+            "status": "completed",
+            "transpositionCaseId": "case-1",
+            "scoreDocumentId": "score-1",
+            "recommendationId": "rec-1",
+            "selectedRangeMin": "G3",
+            "selectedRangeMax": "D5",
+            "semitoneShift": -2,
+            "safeSummary": "The deterministic transformation completed successfully.",
+            "resultFilename": "example-transformed.musicxml",
+            "resultPreviewRevisionToken": "2026-03-20T20:00:00+00:00",
+            "isRetryable": False,
+            "failureCode": None,
+            "failureSeverity": None,
+            "warnings": [{"code": "range_overflow", "severity": "warning", "message": "Range warning"}],
+            "createdAt": transformation_job.created_at.isoformat(),
+        }
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
 def test_post_transformations_emits_structured_warning_when_score_cannot_fit_cleanly():
     _reset_tables()
     connection = engine.connect()

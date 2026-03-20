@@ -47,4 +47,20 @@ export const transformationsApi = {
       );
     }
   },
+
+  async getTransformation(transformationJobId: string): Promise<TransformationResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/transformations/${transformationJobId}`);
+      return handleResponse<TransformationResponse>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      throw new ApiError(
+        'Could not reach the backend service. Please make sure the backend is running and try again.',
+        0
+      );
+    }
+  },
 };

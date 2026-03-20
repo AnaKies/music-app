@@ -169,6 +169,12 @@ def get_score_read(
         )
 
     source_preview = _build_source_score_preview(score_document)
+    latest_transformation = (
+        db.query(TransformationJob)
+        .filter(TransformationJob.score_document_id == score_document.id)
+        .order_by(TransformationJob.created_at.desc())
+        .first()
+    )
     recommendations_exist = (
         db.query(RangeRecommendation.id)
         .filter(RangeRecommendation.score_document_id == score_document.id)
@@ -183,6 +189,7 @@ def get_score_read(
         processingStatus=processing_status,
         originalFilename=score_document.original_filename,
         safeSummary=_build_score_safe_summary(processing_status),
+        latestTransformationJobId=latest_transformation.id if latest_transformation is not None else None,
         sourcePreview=source_preview,
         resultPreview=_build_result_score_preview(db, score_document),
     )

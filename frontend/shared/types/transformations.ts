@@ -17,6 +17,11 @@ export interface TransformationResponse {
   selectedRangeMax: string;
   semitoneShift?: number | null;
   safeSummary: string;
+  resultFilename?: string | null;
+  resultPreviewRevisionToken?: string | null;
+  isRetryable: boolean;
+  failureCode?: string | null;
+  failureSeverity?: string | null;
   warnings: TransformationWarning[];
   createdAt: string;
 }

@@ -5,6 +5,7 @@ from backend.api.schemas.transformations import TransformationRequest, Transform
 from backend.database import get_db
 from backend.services.transformations.service import (
     create_transformation,
+    get_transformation_read,
     get_transformation_preview_content,
 )
 
@@ -21,6 +22,21 @@ def post_transformation(
         transposition_case_id=payload.transpositionCaseId,
         score_document_id=payload.scoreDocumentId,
         recommendation_id=payload.recommendationId,
+    )
+
+
+@router.get(
+    "/transformations/{transformation_id}",
+    response_model=TransformationResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_transformation(
+    transformation_id: str,
+    db: Session = Depends(get_db),
+) -> TransformationResponse:
+    return get_transformation_read(
+        db=db,
+        transformation_job_id=transformation_id,
     )
 
 
