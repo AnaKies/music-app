@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.database import engine, Base
 from backend.api.routes import cases, interviews, recommendations, scores
 from backend.domain.interviews.models import InterviewSession  # noqa: F401
+from backend.domain.recommendations.models import RangeRecommendation  # noqa: F401
 from backend.domain.scores.models import ScoreDocument  # noqa: F401
 
 # Tabellen erstellen (im MVP bei jedem Start zur Sicherheit, sqlite)
