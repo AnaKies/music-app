@@ -21,13 +21,22 @@ describe('Scores API Client', () => {
       json: async () => ({
         scoreDocumentId: 'score-123',
         format: 'musicxml',
-        acceptedStatus: 'uploaded',
+        acceptedStatus: 'parsed',
         originalFilename: 'example.musicxml',
         initialProcessingSnapshot: {
           scoreDocumentId: 'score-123',
           transpositionCaseId: 'case-123',
-          processingStatus: 'uploaded',
+          processingStatus: 'parsed',
           acceptedAt: '2026-03-19T10:00:00Z',
+          canonicalScoreSummary: {
+            schemaVersion: 'v1',
+            title: null,
+            partCount: 1,
+            measureCount: 1,
+            noteCount: 1,
+            restCount: 0,
+            parts: [{ partId: 'P1', name: 'Flute' }],
+          },
         },
       }),
     });
@@ -45,6 +54,6 @@ describe('Scores API Client', () => {
         body: expect.any(FormData),
       })
     );
-    expect(result.acceptedStatus).toBe('uploaded');
+    expect(result.acceptedStatus).toBe('parsed');
   });
 });

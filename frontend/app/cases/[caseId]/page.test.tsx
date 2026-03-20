@@ -162,13 +162,22 @@ describe('CaseDetailPage', () => {
     vi.mocked(scoresApi.uploadScore).mockResolvedValue({
       scoreDocumentId: 'score-123',
       format: 'musicxml',
-      acceptedStatus: 'uploaded',
+      acceptedStatus: 'parsed',
       originalFilename: 'example.musicxml',
       initialProcessingSnapshot: {
         scoreDocumentId: 'score-123',
         transpositionCaseId: 'existing-case-1',
-        processingStatus: 'uploaded',
+        processingStatus: 'parsed',
         acceptedAt: '2026-03-19T10:00:00Z',
+        canonicalScoreSummary: {
+          schemaVersion: 'v1',
+          title: null,
+          partCount: 1,
+          measureCount: 1,
+          noteCount: 0,
+          restCount: 1,
+          parts: [{ partId: 'P1', name: 'Flute' }],
+        },
       },
     });
 
@@ -182,6 +191,7 @@ describe('CaseDetailPage', () => {
     await waitFor(() => {
       expect(scoresApi.uploadScore).toHaveBeenCalledWith('existing-case-1', file);
     });
-    expect(await screen.findByText('Upload accepted')).toBeInTheDocument();
+    expect(await screen.findByText('Score parsed successfully')).toBeInTheDocument();
+    expect(screen.getByText(/Parsed 1 part\(s\) across 1 measure\(s\)\./i)).toBeInTheDocument();
   });
 });
