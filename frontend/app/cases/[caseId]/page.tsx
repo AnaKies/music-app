@@ -125,9 +125,16 @@ export default function CaseDetailPage() {
   const resultDownloadUrl =
     activeScoreDocumentId && isResultPreviewReady ? scoresApi.getResultDownloadUrl(activeScoreDocumentId) : null;
   const hasStaleRecommendations = recommendationResult?.recommendations.some((item) => item.isStale) ?? false;
+  const recommendationFailure = recommendationResult?.failure ?? null;
   const selectedRecommendation =
     recommendationResult?.recommendations.find((item) => item.recommendationId === selectedRecommendationId) ?? null;
   const isSelectedRecommendationStale = selectedRecommendation?.isStale ?? false;
+  const retryRecommendationId =
+    selectedRecommendationId ?? (transformationResult?.status === 'failed' ? transformationResult.recommendationId : null);
+  const canShowRecommendationAction =
+    !!activeScoreDocumentId &&
+    (hasStaleRecommendations || !recommendationFailure || recommendationFailure.isRetryable);
+  const shouldShowRecommendationActionRow = !!activeScoreDocumentId && (isNotationPreviewReady || !!recommendationResult);
 
   useEffect(() => {
     let isMounted = true;
@@ -185,7 +192,7 @@ export default function CaseDetailPage() {
           return;
         }
 
-        setRecommendationResult(response.recommendations.length ? response : null);
+        setRecommendationResult(response.recommendations.length || response.failure ? response : null);
       } catch (caughtError) {
         if (!isMounted) {
           return;
@@ -330,7 +337,10 @@ export default function CaseDetailPage() {
   }
 
   async function handleRunTransformation() {
-    if (!caseDetail || !activeScoreDocumentId || !selectedRecommendationId) {
+    const recommendationId =
+      selectedRecommendationId ?? (transformationResult?.status === 'failed' ? transformationResult.recommendationId : null);
+
+    if (!caseDetail || !activeScoreDocumentId || !recommendationId) {
       return;
     }
 
@@ -340,7 +350,7 @@ export default function CaseDetailPage() {
       const result = await transformationsApi.runTransformation(
         caseDetail.id,
         activeScoreDocumentId,
-        selectedRecommendationId
+        recommendationId
       );
       const refreshedScore = await scoresApi.getScore(activeScoreDocumentId);
       setScoreResult(refreshedScore);
@@ -698,16 +708,24 @@ export default function CaseDetailPage() {
                   </div>
                 </div>
               ) : null}
-              {isNotationPreviewReady || recommendationResult ? (
+              {shouldShowRecommendationActionRow ? (
                 <div className="new-case-actions new-case-actions--inline score-preview__actions">
-                  <button
-                    type="button"
-                    className="new-case-actions__button new-case-actions__button--primary"
-                    disabled={isGeneratingRecommendations || !activeScoreDocumentId}
-                    onClick={() => void handleGenerateRecommendations()}
-                  >
-                    <span>{isGeneratingRecommendations ? 'Generating...' : 'Load Recommendations'}</span>
-                  </button>
+                  {canShowRecommendationAction ? (
+                    <button
+                      type="button"
+                      className="new-case-actions__button new-case-actions__button--primary"
+                      disabled={isGeneratingRecommendations || !activeScoreDocumentId}
+                      onClick={() => void handleGenerateRecommendations()}
+                    >
+                      <span>
+                        {isGeneratingRecommendations
+                          ? 'Generating...'
+                          : recommendationFailure?.isRetryable
+                            ? 'Retry Recommendations'
+                            : 'Load Recommendations'}
+                      </span>
+                    </button>
+                  ) : null}
                   {resultDownloadUrl ? (
                     <a
                       href={resultDownloadUrl}
@@ -734,6 +752,11 @@ export default function CaseDetailPage() {
                       <AlertCircle className="case-entry-error__icon" />
                       <div className="case-entry-error__content">
                         <p className="case-entry-error__text">{recommendationResult.failure.safeSummary}</p>
+                        <p className="case-entry-error__text">
+                          {recommendationResult.failure.isRetryable
+                            ? 'Retry is available for this recommendation failure.'
+                            : 'Retry is not available for this recommendation failure.'}
+                        </p>
                       </div>
                     </div>
                   ) : null}
@@ -806,22 +829,34 @@ export default function CaseDetailPage() {
                       </div>
                     </div>
                   ) : null}
-                  {selectedRecommendationId ? (
+                  {selectedRecommendationId || (transformationResult?.status === 'failed' && transformationResult.isRetryable) ? (
                     <>
                       <p className="recommendation-workspace__selection">
                         {isSelectedRecommendationStale
                           ? 'The selected recommendation is stale and cannot be used. Regenerate recommendations before continuing.'
-                          : 'A recommendation is selected for the next transformation step. No automatic transformation has started.'}
+                          : transformationResult?.status === 'failed'
+                            ? transformationResult.isRetryable
+                              ? 'The last transformation failed in a retryable way. You can retry it safely.'
+                              : 'The last transformation failed and cannot be retried safely from the current state.'
+                            : 'A recommendation is selected for the next transformation step. No automatic transformation has started.'}
                       </p>
                       <div className="new-case-actions new-case-actions--inline">
-                        <button
-                          type="button"
-                          className="new-case-actions__button new-case-actions__button--primary"
-                          disabled={isTransforming || isSelectedRecommendationStale}
-                          onClick={() => void handleRunTransformation()}
-                        >
-                          <span>{isTransforming ? 'Transforming...' : 'Run Transformation'}</span>
-                        </button>
+                        {retryRecommendationId && (!transformationResult || transformationResult.status !== 'failed' || transformationResult.isRetryable) ? (
+                          <button
+                            type="button"
+                            className="new-case-actions__button new-case-actions__button--primary"
+                            disabled={isTransforming || isSelectedRecommendationStale}
+                            onClick={() => void handleRunTransformation()}
+                          >
+                            <span>
+                              {isTransforming
+                                ? 'Transforming...'
+                                : transformationResult?.status === 'failed'
+                                  ? 'Retry Transformation'
+                                  : 'Run Transformation'}
+                            </span>
+                          </button>
+                        ) : null}
                       </div>
                     </>
                   ) : null}
@@ -836,6 +871,16 @@ export default function CaseDetailPage() {
                         {transformationResult.semitoneShift !== null && transformationResult.semitoneShift !== undefined ? (
                           <p className="interview-follow-up__text">
                             Semitone shift: {transformationResult.semitoneShift}
+                          </p>
+                        ) : null}
+                        {transformationResult.failureCode ? (
+                          <p className="interview-follow-up__text">Failure type: {transformationResult.failureCode}</p>
+                        ) : null}
+                        {transformationResult.status === 'failed' ? (
+                          <p className="interview-follow-up__text">
+                            {transformationResult.isRetryable
+                              ? 'Retry is available for this failure.'
+                              : 'Retry is not available for this failure.'}
                           </p>
                         ) : null}
                         {transformationResult.warnings.length ? (
@@ -882,6 +927,16 @@ export default function CaseDetailPage() {
                         {transformationResult.semitoneShift !== null && transformationResult.semitoneShift !== undefined ? (
                           <p className="interview-follow-up__text">
                             Semitone shift: {transformationResult.semitoneShift}
+                          </p>
+                        ) : null}
+                        {transformationResult.failureCode ? (
+                          <p className="interview-follow-up__text">Failure type: {transformationResult.failureCode}</p>
+                        ) : null}
+                        {transformationResult.status === 'failed' ? (
+                          <p className="interview-follow-up__text">
+                            {transformationResult.isRetryable
+                              ? 'Retry is available for this failure.'
+                              : 'Retry is not available for this failure.'}
                           </p>
                         ) : null}
                         {transformationResult.warnings.length ? (

@@ -102,6 +102,8 @@ class RecommendationFailure(BaseModel):
     confidence: RecommendationConfidence
     code: str
     safeSummary: str
+    isRetryable: bool = False
+    failureSeverity: str = "warning"
 
 
 class RecommendationResponse(BaseModel):

@@ -25,4 +25,7 @@ class TransformationJob(Base):
     result_filename = Column(String, nullable=True)
     result_revision_token = Column(String, nullable=True)
     exported_at = Column(DateTime, nullable=True)
+    failure_code = Column(String, nullable=True)
+    failure_severity = Column(String, nullable=True)
+    is_retryable = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

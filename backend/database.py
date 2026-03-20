@@ -32,6 +32,12 @@ def run_startup_migrations() -> None:
             statements.append("ALTER TABLE transformation_jobs ADD COLUMN result_revision_token VARCHAR")
         if "exported_at" not in existing_columns:
             statements.append("ALTER TABLE transformation_jobs ADD COLUMN exported_at DATETIME")
+        if "failure_code" not in existing_columns:
+            statements.append("ALTER TABLE transformation_jobs ADD COLUMN failure_code VARCHAR")
+        if "failure_severity" not in existing_columns:
+            statements.append("ALTER TABLE transformation_jobs ADD COLUMN failure_severity VARCHAR")
+        if "is_retryable" not in existing_columns:
+            statements.append("ALTER TABLE transformation_jobs ADD COLUMN is_retryable VARCHAR")
 
     if "range_recommendations" in inspector.get_table_names():
         existing_columns = {column["name"] for column in inspector.get_columns("range_recommendations")}

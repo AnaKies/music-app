@@ -29,6 +29,8 @@ export interface RecommendationFailure {
   confidence: RecommendationConfidence;
   code: string;
   safeSummary: string;
+  isRetryable: boolean;
+  failureSeverity: string;
 }
 
 export interface RecommendationResponse {

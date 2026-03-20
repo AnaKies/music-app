@@ -267,6 +267,7 @@ def _build_source_score_preview(score_document: ScoreDocument) -> ScorePreviewRe
             safeSummary="The uploaded score could not be prepared for preview.",
             failureCode=failure_code,
             failureSeverity="warning",
+            isRetryable=False,
             originalFilename=score_document.original_filename,
         )
 

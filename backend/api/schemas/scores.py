@@ -82,6 +82,7 @@ class ScorePreviewResponse(BaseModel):
     safeSummary: str
     failureCode: Optional[str] = None
     failureSeverity: Optional[str] = None
+    isRetryable: bool = False
     previewAccess: Optional[str] = None
     originalFilename: Optional[str] = None
     canonicalScoreSummary: Optional[CanonicalScoreSummary] = None

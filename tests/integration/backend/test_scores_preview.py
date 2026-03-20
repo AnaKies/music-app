@@ -84,6 +84,7 @@ def test_get_scores_preview_returns_ready_source_preview_contract():
         assert payload["availability"] == "ready"
         assert payload["rendererFormat"] == "musicxml_preview"
         assert payload["safeSummary"] == "The uploaded score is ready for read-only preview."
+        assert payload["isRetryable"] is False
         assert payload["previewAccess"].startswith("/scores/score-preview-ready/preview/content?revision=")
         assert payload["canonicalScoreSummary"] == {
             "schemaVersion": "v1",
@@ -217,6 +218,7 @@ def test_get_scores_preview_returns_unavailable_for_legacy_score_without_stored_
         assert payload["availability"] == "unavailable"
         assert payload["previewAccess"] is None
         assert "Upload it again" in payload["safeSummary"]
+        assert payload["isRetryable"] is False
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()
@@ -253,6 +255,7 @@ def test_get_scores_preview_returns_failed_state_for_parse_failure():
         payload = response.json()
         assert payload["artifactRole"] == "source"
         assert payload["availability"] == "failed"
+        assert payload["isRetryable"] is False
         assert payload["safeSummary"] == "The uploaded score could not be prepared for preview."
         assert payload["failureCode"] == "invalid_xml"
         assert payload["failureSeverity"] == "warning"

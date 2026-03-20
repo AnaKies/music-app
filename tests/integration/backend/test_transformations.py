@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from unittest.mock import patch
 
 from backend.database import Base, engine, get_db
 from backend.domain.cases.models import TranspositionCase
@@ -237,6 +238,9 @@ def test_get_transformations_reads_latest_persisted_transformation_status():
         result_storage_uri="local://transformations/job-read-1/example-transformed.musicxml",
         result_filename="example-transformed.musicxml",
         result_revision_token="2026-03-20T20:00:00+00:00",
+        failure_code=None,
+        failure_severity=None,
+        is_retryable="false",
     )
     session.add(transformation_job)
     session.commit()
@@ -380,10 +384,11 @@ def test_post_transformations_returns_precise_error_for_invalid_target_range_for
                 },
             )
 
-        assert response.status_code == 422
-        assert response.json() == {
-            "detail": "The selected recommendation range is not in a supported note format.",
-        }
+        assert response.status_code == 202
+        assert response.json()["status"] == "failed"
+        assert response.json()["failureCode"] == "TRANSFORMATION_FAILED"
+        assert response.json()["isRetryable"] is False
+        assert response.json()["safeSummary"] == "The selected recommendation range is not in a supported note format."
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()
@@ -413,6 +418,47 @@ def test_post_transformations_accepts_reversed_range_order_from_existing_recomme
 
         assert response.status_code == 202
         assert response.json()["status"] == "completed"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_post_transformations_persists_retryable_failed_status_for_recoverable_internal_error():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_score_and_recommendation(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with patch(
+            "backend.services.transformations.service.transform_musicxml_to_target_range",
+            side_effect=RuntimeError("temporary processing issue"),
+        ):
+            with TestClient(app) as client:
+                response = client.post(
+                    "/transformations",
+                    json={
+                        "transpositionCaseId": "case-1",
+                        "scoreDocumentId": "score-1",
+                        "recommendationId": "rec-1",
+                    },
+                )
+
+        assert response.status_code == 202
+        payload = response.json()
+        assert payload["status"] == "failed"
+        assert payload["failureCode"] == "TRANSFORMATION_FAILED"
+        assert payload["isRetryable"] is True
+        assert "recoverable" in payload["safeSummary"].lower()
+        persisted = session.query(TransformationJob).order_by(TransformationJob.created_at.desc()).first()
+        assert persisted is not None
+        assert persisted.status == "failed"
+        assert persisted.failure_code == "TRANSFORMATION_FAILED"
+        assert persisted.is_retryable == "true"
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()

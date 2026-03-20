@@ -647,6 +647,169 @@ describe('CaseDetailPage', () => {
     expect(screen.queryByRole('button', { name: /run transformation/i })).not.toBeInTheDocument();
   });
 
+  it('shows retryable transformation recovery controls only for retryable failed status', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: 'score-123',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'G3',
+        comfort_range_max: 'D5',
+      },
+    });
+    vi.mocked(scoresApi.getScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      transpositionCaseId: 'existing-case-1',
+      processingStatus: 'failed',
+      originalFilename: 'example.musicxml',
+      safeSummary: 'The score flow failed during transformation.',
+      latestTransformationJobId: 'job-failed-1',
+      sourcePreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'source',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'The uploaded score is ready for read-only preview.',
+        previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+        originalFilename: 'example.musicxml',
+        isRetryable: false,
+      },
+      resultPreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'result',
+        availability: 'unavailable',
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'A result preview is not available yet because no transformed result artifact exists.',
+        originalFilename: 'example.musicxml',
+        isRetryable: false,
+      },
+    });
+    vi.mocked(recommendationsApi.getRecommendations).mockResolvedValue({
+      status: 'ready',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendations: [
+        {
+          recommendationId: 'rec-primary',
+          label: 'Primary recommendation',
+          targetRange: { min: 'G3', max: 'D5' },
+          recommendedKey: 'concert_c',
+          confidence: 'medium',
+          summaryReason: 'Matches the confirmed player comfort range.',
+          warnings: [],
+          isPrimary: true,
+          isStale: false,
+        },
+      ],
+      failure: null,
+    });
+    vi.mocked(transformationsApi.getTransformation).mockResolvedValue({
+      transformationJobId: 'job-failed-1',
+      status: 'failed',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendationId: 'rec-primary',
+      selectedRangeMin: 'G3',
+      selectedRangeMax: 'D5',
+      semitoneShift: null,
+      safeSummary: 'The deterministic transformation failed in a recoverable way. Retry the transformation.',
+      resultFilename: null,
+      resultPreviewRevisionToken: null,
+      isRetryable: true,
+      failureCode: 'TRANSFORMATION_FAILED',
+      failureSeverity: 'warning',
+      warnings: [],
+      createdAt: '2026-03-20T11:00:00Z',
+    });
+
+    render(<CaseDetailPage />);
+
+    expect(await screen.findByText(/Retry is available for this failure\./i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry transformation/i })).toBeInTheDocument();
+  });
+
+  it('hides recommendation retry controls for non-retryable failure states', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: 'score-123',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: null,
+        comfort_range_max: null,
+      },
+    });
+    vi.mocked(scoresApi.getScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      transpositionCaseId: 'existing-case-1',
+      processingStatus: 'recommendation_pending',
+      originalFilename: 'example.musicxml',
+      safeSummary: 'The score is parsed and ready for recommendation generation.',
+      latestTransformationJobId: null,
+      sourcePreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'source',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'The uploaded score is ready for read-only preview.',
+        previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+        originalFilename: 'example.musicxml',
+        isRetryable: false,
+      },
+      resultPreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'result',
+        availability: 'unavailable',
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'A result preview is not available yet because no transformed result artifact exists.',
+        originalFilename: 'example.musicxml',
+        isRetryable: false,
+      },
+    });
+    vi.mocked(recommendationsApi.getRecommendations).mockResolvedValue({
+      status: 'blocked',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendations: [],
+      failure: {
+        confidence: 'blocked',
+        code: 'insufficient_context',
+        safeSummary: 'The recommendation path is blocked because the case or score context is incomplete.',
+        isRetryable: false,
+        failureSeverity: 'warning',
+      },
+    });
+
+    render(<CaseDetailPage />);
+
+    expect(await screen.findByText(/Retry is not available for this recommendation failure\./i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /retry recommendations/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /load recommendations/i })).not.toBeInTheDocument();
+  });
+
   it('renders a calm failed preview state for an existing uploaded score', async () => {
     vi.mocked(casesApi.getCase).mockResolvedValue({
       id: 'existing-case-1',

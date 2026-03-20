@@ -43,6 +43,8 @@ def generate_recommendations(
                 confidence=RecommendationConfidence.BLOCKED,
                 code="insufficient_context",
                 safeSummary="The recommendation path is blocked because the case or score context is incomplete.",
+                isRetryable=False,
+                failureSeverity="warning",
             ),
         )
 

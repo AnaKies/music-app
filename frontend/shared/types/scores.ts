@@ -56,6 +56,7 @@ export interface ScorePreviewResponse {
   safeSummary: string;
   failureCode?: string | null;
   failureSeverity?: string | null;
+  isRetryable?: boolean;
   previewAccess?: string | null;
   originalFilename?: string | null;
   canonicalScoreSummary?: CanonicalScoreSummary | null;

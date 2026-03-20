@@ -118,6 +118,8 @@ def test_post_recommendations_returns_blocked_failure_for_incomplete_context():
             "confidence": "blocked",
             "code": "insufficient_context",
             "safeSummary": "The recommendation path is blocked because the case or score context is incomplete.",
+            "isRetryable": False,
+            "failureSeverity": "warning",
         }
     finally:
         app.dependency_overrides.clear()
