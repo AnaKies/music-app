@@ -10,6 +10,7 @@ import type {
   CaseDetail,
   CaseCreateRequest,
   CaseCreateResponse,
+  CaseUpdateRequest,
 } from '../types/cases';
 
 // API base URL from environment or default
@@ -124,6 +125,26 @@ export const casesApi = {
   async deleteCase(caseId: string): Promise<void> {
     await performRequest<void>(`${API_BASE_URL}/cases/${caseId}`, {
       method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+  },
+
+  async updateCase(caseId: string, request: CaseUpdateRequest): Promise<CaseDetail> {
+    return performRequest<CaseDetail>(`${API_BASE_URL}/cases/${caseId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+  },
+
+  async resetCase(caseId: string): Promise<CaseDetail> {
+    return performRequest<CaseDetail>(`${API_BASE_URL}/cases/${caseId}/reset`, {
+      method: 'POST',
       headers: {
         'Accept': 'application/json',
       },

@@ -42,6 +42,7 @@ export interface InterviewAdvanceRequest {
   interviewId?: string;
   questionId?: string;
   answer?: InterviewAnswerValue;
+  restart?: boolean;
 }
 
 export interface InterviewRecordedAnswer {

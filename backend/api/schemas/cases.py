@@ -70,5 +70,10 @@ class CaseDetail(BaseModel):
     constraints: CaseConstraints = Field(default_factory=CaseConstraints)
 
 
+class CaseUpdateRequest(BaseModel):
+    instrumentIdentity: str = Field(min_length=1)
+    constraints: CaseConstraints = Field(default_factory=CaseConstraints)
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)

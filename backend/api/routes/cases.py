@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from backend.api.schemas.cases import (
     CaseCreateRequest,
     CaseCreateResponse,
-    CaseSummary,
     CaseDetail,
+    CaseSummary,
+    CaseUpdateRequest,
 )
 from backend.database import get_db
 from backend.services.cases.create_case import create_case
@@ -57,6 +58,26 @@ def get_case(
     return CaseService.build_case_detail(case)
 
 
+@router.patch(
+    "/cases/{case_id}",
+    response_model=CaseDetail,
+    status_code=status.HTTP_200_OK,
+)
+def patch_case(
+    case_id: str,
+    payload: CaseUpdateRequest,
+    db: Session = Depends(get_db),
+) -> CaseDetail:
+    case = CaseService.update_case(db, case_id, payload)
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Case with id {case_id} not found.",
+        )
+
+    return CaseService.build_case_detail(case)
+
+
 @router.get(
     "/cases",
     response_model=list[CaseSummary],
@@ -86,3 +107,22 @@ def delete_case(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Case with id {case_id} not found.",
         )
+
+
+@router.post(
+    "/cases/{case_id}/reset",
+    response_model=CaseDetail,
+    status_code=status.HTTP_200_OK,
+)
+def reset_case(
+    case_id: str,
+    db: Session = Depends(get_db),
+) -> CaseDetail:
+    case = CaseService.reset_case(db, case_id)
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Case with id {case_id} not found.",
+        )
+
+    return CaseService.build_case_detail(case)

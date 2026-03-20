@@ -79,6 +79,11 @@ export interface CaseCreateRequest {
   existing_case_id?: string | null;
 }
 
+export interface CaseUpdateRequest {
+  instrumentIdentity: string;
+  constraints: CaseConstraints;
+}
+
 /**
  * Action type for case creation flow.
  */

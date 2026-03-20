@@ -322,4 +322,54 @@ describe('InterviewPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Interview session complete')).not.toBeInTheDocument();
   });
+
+  it('prioritizes edit-mode restart over a stale interviewId in the URL', async () => {
+    currentSearchParams = new URLSearchParams({
+      caseId: 'case-123',
+      interviewId: 'stale-interview-1',
+      mode: 'edit',
+    });
+
+    vi.mocked(interviewsApi.startOrContinueInterview).mockResolvedValue({
+      interviewId: 'interview-edit-fresh',
+      caseId: 'case-123',
+      status: 'in_progress',
+      nextQuestion: {
+        id: 'instrument_identity',
+        prompt: 'Which instrument should this transposition case target?',
+        type: 'single_select',
+        required: true,
+        helpText: 'Pick the main instrument context so the later range checks stay grounded.',
+        options: [{ value: 'flute', label: 'Flute' }],
+      },
+      progress: {
+        currentStep: 1,
+        totalSteps: 4,
+        percentComplete: 0,
+      },
+      lowConfidence: false,
+      derivedCaseSummary: {
+        caseStatus: 'interview_in_progress',
+        instrumentIdentity: 'placeholder',
+        difficultKeys: [],
+        restrictedRegisters: [],
+        comfortRangeMin: null,
+        comfortRangeMax: null,
+        notes: [],
+        confirmedConstraintCount: 0,
+      },
+    });
+
+    render(<InterviewPage />);
+
+    await waitFor(() => {
+      expect(interviewsApi.startOrContinueInterview).toHaveBeenCalledWith({
+        caseId: 'case-123',
+        restart: true,
+      });
+    });
+    expect(interviewsApi.getInterview).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledWith('/interview?caseId=case-123&interviewId=interview-edit-fresh');
+    expect(await screen.findByText('Which instrument should this transposition case target?')).toBeInTheDocument();
+  });
 });

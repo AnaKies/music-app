@@ -243,6 +243,103 @@ describe('Cases API Client', () => {
     });
   });
 
+  describe('updateCase', () => {
+    it('updates an existing case through the patch endpoint', async () => {
+      const mockResponse: CaseDetail = {
+        id: 'case-123',
+        status: 'ready_for_upload',
+        instrumentIdentity: 'flute',
+        scoreCount: 0,
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-15T12:00:00Z',
+        latestScoreDocumentId: null,
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: 'A3',
+          comfort_range_max: 'E5',
+        },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await casesApi.updateCase('case-123', {
+        instrumentIdentity: 'flute',
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: 'A3',
+          comfort_range_max: 'E5',
+        },
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8000/cases/case-123',
+        expect.objectContaining({
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        })
+      );
+      expect(result).toEqual(mockResponse);
+    });
+  });
+
+  describe('resetCase', () => {
+    it('resets an existing case through the explicit reset endpoint', async () => {
+      const mockResponse: CaseDetail = {
+        id: 'case-123',
+        status: 'new',
+        instrumentIdentity: 'trumpet-bb',
+        scoreCount: 0,
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-15T12:00:00Z',
+        latestScoreDocumentId: null,
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: null,
+          comfort_range_max: null,
+        },
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await casesApi.resetCase('case-123');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://localhost:8000/cases/case-123/reset',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+          },
+        })
+      );
+      expect(result.status).toBe('new');
+    });
+  });
+
   describe('ApiError', () => {
     it('creates error with status and message', () => {
       const error = new ApiError('Test error', 400, 'VALIDATION_ERROR');

@@ -53,6 +53,7 @@ class InterviewAdvanceRequest(BaseModel):
     interviewId: Optional[str] = None
     questionId: Optional[str] = None
     answer: Optional[InterviewAnswerValue] = None
+    restart: bool = False
 
     @model_validator(mode="after")
     def validate_start_or_continue(self):

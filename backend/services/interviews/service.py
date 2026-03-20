@@ -311,6 +311,37 @@ class InterviewService:
         definitions = _question_definitions()
 
         if payload.interviewId is None:
+            if payload.restart:
+                db.query(InterviewSession).filter(InterviewSession.case_id == payload.caseId).delete(
+                    synchronize_session=False
+                )
+                case.status = CaseStatus.INTERVIEW_IN_PROGRESS
+                db.add(case)
+                db.commit()
+                db.refresh(case)
+
+                session_model = InterviewSession(
+                    case_id=payload.caseId,
+                    status=InterviewSessionStatus.IN_PROGRESS,
+                    current_question_id=QUESTION_ORDER[0],
+                    answers=[],
+                    low_confidence={"active": False},
+                )
+                db.add(session_model)
+                db.commit()
+                db.refresh(session_model)
+
+                return InterviewAdvanceResponse(
+                    interviewId=session_model.id,
+                    caseId=payload.caseId,
+                    status=session_model.status,
+                    nextQuestion=definitions[QUESTION_ORDER[0]],
+                    progress=_progress_for(session_model.current_question_id, session_model.status),
+                    lowConfidence=False,
+                    collectedAnswers=[],
+                    derivedCaseSummary=_build_summary(case, []),
+                )
+
             existing_session = (
                 db.query(InterviewSession)
                 .filter(InterviewSession.case_id == payload.caseId)

@@ -125,6 +125,7 @@ export default function InterviewPage() {
   const searchParams = useSearchParams();
   const caseId = searchParams.get('caseId') ?? '';
   const interviewId = searchParams.get('interviewId') ?? '';
+  const mode = searchParams.get('mode') ?? '';
 
   const [responseState, setResponseState] = useState<InterviewViewState | null>(null);
   const [draft, setDraft] = useState(buildEmptyDraft());
@@ -157,7 +158,9 @@ export default function InterviewPage() {
       setIsLoading(true);
       setError(null);
 
-      if (interviewId) {
+      if (mode === 'edit') {
+        syncResponse(await interviewsApi.startOrContinueInterview({ caseId, restart: true }));
+      } else if (interviewId) {
         const detail = await interviewsApi.getInterview(interviewId);
         syncResponse({
           interviewId: detail.interviewId,
@@ -181,7 +184,7 @@ export default function InterviewPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [caseId, interviewId, syncResponse]);
+  }, [caseId, interviewId, mode, syncResponse]);
 
   useEffect(() => {
     void loadInterview();

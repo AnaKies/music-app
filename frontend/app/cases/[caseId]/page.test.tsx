@@ -20,6 +20,8 @@ vi.mock('@/components/score-preview/ScoreViewer', () => ({
 vi.mock('@/shared/api/cases', () => ({
   casesApi: {
     getCase: vi.fn(),
+    updateCase: vi.fn(),
+    resetCase: vi.fn(),
   },
   ApiError: class ApiError extends Error {
     constructor(message: string, public status: number) {
@@ -60,6 +62,7 @@ vi.mock('next/navigation', () => ({
 describe('CaseDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('confirm', vi.fn(() => true));
     vi.mocked(scoresApi.getResultDownloadUrl).mockImplementation(
       (scoreDocumentId: string) => `http://localhost:8000/scores/${scoreDocumentId}/download?artifact=result`
     );
@@ -101,6 +104,12 @@ describe('CaseDetailPage', () => {
       )
     ).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /upload musicxml/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /edit case/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reset case/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /return to interview/i })).toHaveAttribute(
+      'href',
+      '/interview?caseId=existing-case-1&mode=edit'
+    );
   });
 
   it('offers an interview action for in-progress cases', async () => {
@@ -845,5 +854,152 @@ describe('CaseDetailPage', () => {
     expect(await screen.findByText(/Could not load the score preview/i)).toBeInTheDocument();
     expect(screen.getByText('trumpet-bb')).toBeInTheDocument();
     expect(screen.queryByText(/Could not load the selected case/i)).not.toBeInTheDocument();
+  });
+
+  it('allows editing the case constraints directly on the case page', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 0,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: null,
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'G3',
+        comfort_range_max: 'D5',
+      },
+    });
+    vi.mocked(casesApi.updateCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'flute',
+      scoreCount: 0,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:30:00Z',
+      latestScoreDocumentId: null,
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'A3',
+        comfort_range_max: 'E5',
+      },
+    });
+
+    render(<CaseDetailPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /^edit case$/i }));
+    fireEvent.change(screen.getByLabelText(/instrument identity/i), { target: { value: 'flute' } });
+    fireEvent.change(screen.getByLabelText(/comfort range min/i), { target: { value: 'A3' } });
+    fireEvent.change(screen.getByLabelText(/comfort range max/i), { target: { value: 'E5' } });
+    fireEvent.click(screen.getByRole('button', { name: /save case changes/i }));
+
+    await waitFor(() => {
+      expect(casesApi.updateCase).toHaveBeenCalledWith('existing-case-1', {
+        instrumentIdentity: 'flute',
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: 'A3',
+          comfort_range_max: 'E5',
+        },
+      });
+    });
+    expect(await screen.findByText('flute')).toBeInTheDocument();
+  });
+
+  it('resets the case explicitly and clears the current workflow state', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: 'score-123',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'G3',
+        comfort_range_max: 'D5',
+      },
+    });
+    vi.mocked(casesApi.resetCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'new',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 0,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:30:00Z',
+      latestScoreDocumentId: null,
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: null,
+        comfort_range_max: null,
+      },
+    });
+    vi.mocked(scoresApi.getScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      transpositionCaseId: 'existing-case-1',
+      processingStatus: 'recommendation_pending',
+      originalFilename: 'example.musicxml',
+      safeSummary: 'The score is parsed and ready for recommendation generation.',
+      latestTransformationJobId: null,
+      sourcePreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'source',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'The uploaded score is ready for read-only preview.',
+        previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+        originalFilename: 'example.musicxml',
+        canonicalScoreSummary: null,
+      },
+      resultPreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'result',
+        availability: 'unavailable',
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'A result preview is not available yet because no transformed result artifact exists.',
+        originalFilename: 'example.musicxml',
+      },
+    });
+
+    render(<CaseDetailPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /reset case/i }));
+
+    await waitFor(() => {
+      expect(casesApi.resetCase).toHaveBeenCalledWith('existing-case-1');
+    });
+    expect(await screen.findByRole('link', { name: /begin interview/i })).toHaveAttribute(
+      'href',
+      '/interview?caseId=existing-case-1'
+    );
   });
 });

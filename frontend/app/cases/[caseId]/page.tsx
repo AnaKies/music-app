@@ -15,6 +15,27 @@ import type { RecommendationItem, RecommendationResponse } from '@/shared/types/
 import type { ScorePreviewResponse, ScoreReadResponse, ScoreUploadResponse } from '@/shared/types/scores';
 import type { TransformationResponse } from '@/shared/types/transformations';
 
+function buildCaseEditDraft(caseDetail: CaseDetail) {
+  return {
+    instrumentIdentity: caseDetail.instrumentIdentity,
+    highestPlayableTone: caseDetail.constraints.highest_playable_tone ?? '',
+    lowestPlayableTone: caseDetail.constraints.lowest_playable_tone ?? '',
+    restrictedTones: caseDetail.constraints.restricted_tones.join(', '),
+    restrictedRegisters: caseDetail.constraints.restricted_registers.join(', '),
+    difficultKeys: caseDetail.constraints.difficult_keys.join(', '),
+    preferredKeys: caseDetail.constraints.preferred_keys.join(', '),
+    comfortRangeMin: caseDetail.constraints.comfort_range_min ?? '',
+    comfortRangeMax: caseDetail.constraints.comfort_range_max ?? '',
+  };
+}
+
+function parseListInput(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function CaseDetailPage() {
   const params = useParams<{ caseId: string }>();
   const caseId = typeof params?.caseId === 'string' ? params.caseId : '';
@@ -36,6 +57,20 @@ export default function CaseDetailPage() {
   const [isLoadingTransformation, setIsLoadingTransformation] = useState(false);
   const [transformationError, setTransformationError] = useState<string | null>(null);
   const [activePreviewMode, setActivePreviewMode] = useState<'original' | 'result'>('original');
+  const [isEditingCase, setIsEditingCase] = useState(false);
+  const [isSavingCase, setIsSavingCase] = useState(false);
+  const [isResettingCase, setIsResettingCase] = useState(false);
+  const [caseEditDraft, setCaseEditDraft] = useState({
+    instrumentIdentity: '',
+    highestPlayableTone: '',
+    lowestPlayableTone: '',
+    restrictedTones: '',
+    restrictedRegisters: '',
+    difficultKeys: '',
+    preferredKeys: '',
+    comfortRangeMin: '',
+    comfortRangeMax: '',
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -48,6 +83,7 @@ export default function CaseDetailPage() {
 
         if (isMounted) {
           setCaseDetail(response);
+          setCaseEditDraft(buildCaseEditDraft(response));
         }
       } catch (caughtError) {
         if (!isMounted) {
@@ -259,6 +295,84 @@ export default function CaseDetailPage() {
     }
   }
 
+  async function handleSaveCase() {
+    if (!caseDetail) {
+      return;
+    }
+
+    try {
+      setIsSavingCase(true);
+      setError(null);
+      const updatedCase = await casesApi.updateCase(caseDetail.id, {
+        instrumentIdentity: caseEditDraft.instrumentIdentity.trim(),
+        constraints: {
+          highest_playable_tone: caseEditDraft.highestPlayableTone.trim() || null,
+          lowest_playable_tone: caseEditDraft.lowestPlayableTone.trim() || null,
+          restricted_tones: parseListInput(caseEditDraft.restrictedTones),
+          restricted_registers: parseListInput(caseEditDraft.restrictedRegisters),
+          difficult_keys: parseListInput(caseEditDraft.difficultKeys),
+          preferred_keys: parseListInput(caseEditDraft.preferredKeys),
+          comfort_range_min: caseEditDraft.comfortRangeMin.trim() || null,
+          comfort_range_max: caseEditDraft.comfortRangeMax.trim() || null,
+        },
+      });
+      setCaseDetail(updatedCase);
+      setCaseEditDraft(buildCaseEditDraft(updatedCase));
+      setIsEditingCase(false);
+      setUploadResult(null);
+      setScoreResult(null);
+      setPreviewError(null);
+      setRecommendationResult(null);
+      setSelectedRecommendationId(null);
+      setTransformationResult(null);
+      setTransformationError(null);
+      setActivePreviewMode('original');
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.message);
+      } else {
+        setError('Could not save the updated case. Please try again.');
+      }
+    } finally {
+      setIsSavingCase(false);
+    }
+  }
+
+  async function handleResetCase() {
+    if (!caseDetail) {
+      return;
+    }
+
+    if (typeof window !== 'undefined' && !window.confirm('Reset this case and clear its uploaded score workflow?')) {
+      return;
+    }
+
+    try {
+      setIsResettingCase(true);
+      setError(null);
+      const resetCase = await casesApi.resetCase(caseDetail.id);
+      setCaseDetail(resetCase);
+      setCaseEditDraft(buildCaseEditDraft(resetCase));
+      setIsEditingCase(false);
+      setUploadResult(null);
+      setScoreResult(null);
+      setPreviewError(null);
+      setRecommendationResult(null);
+      setSelectedRecommendationId(null);
+      setTransformationResult(null);
+      setTransformationError(null);
+      setActivePreviewMode('original');
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.message);
+      } else {
+        setError('Could not reset the case. Please try again.');
+      }
+    } finally {
+      setIsResettingCase(false);
+    }
+  }
+
   return (
     <main className="new-case-page">
       <header className="new-case-hero">
@@ -283,6 +397,172 @@ export default function CaseDetailPage() {
       ) : caseDetail ? (
         <section className="case-entry-section">
           <h2 className="case-entry-section__title">Case overview</h2>
+          <div className="new-case-actions new-case-actions--inline">
+            <button
+              type="button"
+              className="new-case-actions__button new-case-actions__button--primary"
+              onClick={() => setIsEditingCase((currentValue) => !currentValue)}
+            >
+              <span>{isEditingCase ? 'Close Edit Case' : 'Edit Case'}</span>
+            </button>
+            {caseDetail.status !== 'completed' ? (
+              <Link href={`/interview?caseId=${caseId}&mode=edit`} className="new-case-actions__button">
+                <span>Return To Interview</span>
+              </Link>
+            ) : null}
+            <button
+              type="button"
+              className="new-case-actions__button"
+              disabled={isResettingCase}
+              onClick={() => void handleResetCase()}
+            >
+              <span>{isResettingCase ? 'Resetting...' : 'Reset Case'}</span>
+            </button>
+            <Link href="/" className="new-case-actions__button">
+              <ArrowLeft className="new-case-actions__button-icon" />
+              <span>Back To Cases</span>
+            </Link>
+          </div>
+          {isEditingCase ? (
+            <section className="upload-panel" aria-label="Edit case form">
+              <h3 className="case-entry-section__title">Edit case constraints</h3>
+              <div className="interview-range-grid">
+                <label className="interview-field">
+                  <span className="interview-field__label">Instrument identity</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.instrumentIdentity}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        instrumentIdentity: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Comfort range min</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.comfortRangeMin}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        comfortRangeMin: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g. G3"
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Comfort range max</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.comfortRangeMax}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        comfortRangeMax: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g. D5"
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Highest playable tone</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.highestPlayableTone}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        highestPlayableTone: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Lowest playable tone</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.lowestPlayableTone}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        lowestPlayableTone: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Restricted tones</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.restrictedTones}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        restrictedTones: event.target.value,
+                      }))
+                    }
+                    placeholder="comma separated"
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Restricted registers</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.restrictedRegisters}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        restrictedRegisters: event.target.value,
+                      }))
+                    }
+                    placeholder="comma separated"
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Difficult keys</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.difficultKeys}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        difficultKeys: event.target.value,
+                      }))
+                    }
+                    placeholder="comma separated"
+                  />
+                </label>
+                <label className="interview-field">
+                  <span className="interview-field__label">Preferred keys</span>
+                  <input
+                    className="interview-field__input"
+                    value={caseEditDraft.preferredKeys}
+                    onChange={(event) =>
+                      setCaseEditDraft((currentDraft) => ({
+                        ...currentDraft,
+                        preferredKeys: event.target.value,
+                      }))
+                    }
+                    placeholder="comma separated"
+                  />
+                </label>
+              </div>
+              <div className="new-case-actions new-case-actions--inline">
+                <button
+                  type="button"
+                  className="new-case-actions__button new-case-actions__button--primary"
+                  disabled={isSavingCase || !caseEditDraft.instrumentIdentity.trim()}
+                  onClick={() => void handleSaveCase()}
+                >
+                  <span>{isSavingCase ? 'Saving...' : 'Save Case Changes'}</span>
+                </button>
+              </div>
+            </section>
+          ) : null}
           <article className="case-card case-card--suggested" aria-label={`Existing case: ${caseDetail.instrumentIdentity}`}>
             <span className="case-card__badge">Active case</span>
             <div className="case-card__body">
@@ -341,10 +621,6 @@ export default function CaseDetailPage() {
                   >
                     <span>{isUploading ? 'Uploading...' : 'Upload MusicXML'}</span>
                   </button>
-                  <Link href="/" className="new-case-actions__button">
-                    <ArrowLeft className="new-case-actions__button-icon" />
-                    <span>Back To Cases</span>
-                  </Link>
                 </div>
               ) : null}
               {uploadResult?.acceptedStatus === 'parse_failed' ? (
@@ -378,10 +654,6 @@ export default function CaseDetailPage() {
                       <span>Download Result MusicXML</span>
                     </a>
                   ) : null}
-                  <Link href="/" className="new-case-actions__button">
-                    <ArrowLeft className="new-case-actions__button-icon" />
-                    <span>Back To Cases</span>
-                  </Link>
                 </div>
               ) : null}
               {recommendationResult ? (
@@ -391,6 +663,9 @@ export default function CaseDetailPage() {
                       <p className="new-case-hero__eyebrow">F8 · Recommendation Review</p>
                       <h3 className="case-entry-section__title">Review and choose a recommendation</h3>
                     </div>
+                    <Link href={`/interview?caseId=${caseId}&mode=edit`} className="new-case-actions__button">
+                      <span>Return To Interview</span>
+                    </Link>
                   </div>
                   {recommendationResult.status === 'blocked' && recommendationResult.failure ? (
                     <div className="case-entry-error">
