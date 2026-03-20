@@ -139,6 +139,11 @@ def test_post_transformations_accepts_valid_selected_recommendation():
         persisted = session.query(TransformationJob).filter(TransformationJob.score_document_id == "score-1").all()
         assert len(persisted) == 1
         assert persisted[0].transformed_musicxml is not None
+        assert persisted[0].transformed_musicxml.startswith("<?xml")
+        assert persisted[0].result_storage_uri is not None
+        assert persisted[0].result_filename == "example-transformed.musicxml"
+        assert persisted[0].result_revision_token is not None
+        assert persisted[0].exported_at is not None
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()

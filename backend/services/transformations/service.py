@@ -1,4 +1,4 @@
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from backend.api.schemas.scores import ScoreProcessingStatus
@@ -10,6 +10,8 @@ from backend.api.schemas.transformations import (
 from backend.domain.recommendations.models import RangeRecommendation
 from backend.domain.scores.models import ScoreDocument
 from backend.domain.transformations.models import TransformationJob
+from backend.services.exports.service import export_transformation_result
+from backend.services.shared.musicxml import ensure_xml_declaration
 from backend.services.transformations.engine import transform_musicxml_to_target_range
 
 
@@ -90,6 +92,25 @@ def create_transformation(
         transformed_musicxml=engine_result.transformed_musicxml,
     )
     db.add(transformation_job)
+    db.flush()
+
+    try:
+        exported_artifact = export_transformation_result(
+            transformation_job_id=transformation_job.id,
+            transformed_musicxml=engine_result.transformed_musicxml,
+            original_filename=score_document.original_filename,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The transformed score could not be exported as a valid MusicXML result.",
+        ) from error
+
+    transformation_job.result_storage_uri = exported_artifact.storage_uri
+    transformation_job.result_filename = exported_artifact.filename
+    transformation_job.result_revision_token = exported_artifact.revision_token
+    transformation_job.exported_at = exported_artifact.exported_at
+
     db.commit()
     db.refresh(transformation_job)
 
@@ -105,4 +126,34 @@ def create_transformation(
         safeSummary=transformation_job.safe_summary,
         warnings=[TransformationWarning(**warning) for warning in (transformation_job.warnings or [])],
         createdAt=transformation_job.created_at,
+    )
+
+
+def get_transformation_preview_content(
+    db: Session,
+    transformation_job_id: str,
+    revision: str,
+) -> Response:
+    transformation_job = db.query(TransformationJob).filter(TransformationJob.id == transformation_job_id).first()
+    if transformation_job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Transformation with id {transformation_job_id} not found.",
+        )
+
+    if not transformation_job.result_revision_token or revision != transformation_job.result_revision_token:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The requested result preview revision is stale.",
+        )
+
+    if not transformation_job.transformed_musicxml or not transformation_job.result_storage_uri:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The requested result preview content is not ready.",
+        )
+
+    return Response(
+        content=ensure_xml_declaration(transformation_job.transformed_musicxml),
+        media_type="application/vnd.recordare.musicxml+xml",
     )

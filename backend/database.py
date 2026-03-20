@@ -15,14 +15,23 @@ Base = declarative_base()
 
 def run_startup_migrations() -> None:
     inspector = inspect(engine)
-    if "score_documents" not in inspector.get_table_names():
-        return
-
-    existing_columns = {column["name"] for column in inspector.get_columns("score_documents")}
     statements = []
 
-    if "source_musicxml" not in existing_columns:
-        statements.append("ALTER TABLE score_documents ADD COLUMN source_musicxml TEXT")
+    if "score_documents" in inspector.get_table_names():
+        existing_columns = {column["name"] for column in inspector.get_columns("score_documents")}
+        if "source_musicxml" not in existing_columns:
+            statements.append("ALTER TABLE score_documents ADD COLUMN source_musicxml TEXT")
+
+    if "transformation_jobs" in inspector.get_table_names():
+        existing_columns = {column["name"] for column in inspector.get_columns("transformation_jobs")}
+        if "result_storage_uri" not in existing_columns:
+            statements.append("ALTER TABLE transformation_jobs ADD COLUMN result_storage_uri VARCHAR")
+        if "result_filename" not in existing_columns:
+            statements.append("ALTER TABLE transformation_jobs ADD COLUMN result_filename VARCHAR")
+        if "result_revision_token" not in existing_columns:
+            statements.append("ALTER TABLE transformation_jobs ADD COLUMN result_revision_token VARCHAR")
+        if "exported_at" not in existing_columns:
+            statements.append("ALTER TABLE transformation_jobs ADD COLUMN exported_at DATETIME")
 
     if not statements:
         return

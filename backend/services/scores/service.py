@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 from zipfile import BadZipFile, ZipFile
 
 from fastapi import HTTPException, Response, UploadFile, status
@@ -23,6 +24,8 @@ from backend.api.schemas.scores import (
 from backend.domain.cases.models import TranspositionCase
 from backend.domain.recommendations.models import RangeRecommendation
 from backend.domain.scores.models import CanonicalScore, ScoreDocument
+from backend.domain.transformations.models import TransformationJob
+from backend.services.shared.musicxml import ensure_xml_declaration
 from backend.services.scores.parser import parse_musicxml
 
 MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
@@ -181,7 +184,7 @@ def get_score_read(
         originalFilename=score_document.original_filename,
         safeSummary=_build_score_safe_summary(processing_status),
         sourcePreview=source_preview,
-        resultPreview=_build_result_score_preview(score_document),
+        resultPreview=_build_result_score_preview(db, score_document),
     )
 
 
@@ -202,7 +205,7 @@ def _build_source_score_preview(score_document: ScoreDocument) -> ScorePreviewRe
             pageCount=max(canonical_summary.partCount, 1),
             revisionToken=revision_token,
             safeSummary="The uploaded score is ready for read-only preview.",
-            previewAccess=f"/scores/{score_document.id}/preview/content?revision={revision_token}",
+            previewAccess=f"/scores/{score_document.id}/preview/content?revision={quote(revision_token, safe='')}",
             originalFilename=score_document.original_filename,
             canonicalScoreSummary=canonical_summary,
         )
@@ -243,7 +246,35 @@ def _build_source_score_preview(score_document: ScoreDocument) -> ScorePreviewRe
     )
 
 
-def _build_result_score_preview(score_document: ScoreDocument) -> ScorePreviewResponse:
+def _build_result_score_preview(db: Session, score_document: ScoreDocument) -> ScorePreviewResponse:
+    transformation_job = (
+        db.query(TransformationJob)
+        .filter(
+            TransformationJob.score_document_id == score_document.id,
+            TransformationJob.result_storage_uri.isnot(None),
+            TransformationJob.result_revision_token.isnot(None),
+        )
+        .order_by(TransformationJob.created_at.desc())
+        .first()
+    )
+    if transformation_job is not None and transformation_job.transformed_musicxml and transformation_job.result_revision_token:
+        canonical_summary = _build_transformed_summary(transformation_job.transformed_musicxml)
+        return ScorePreviewResponse(
+            scoreDocumentId=score_document.id,
+            artifactRole=ScoreArtifactRole.RESULT,
+            availability=ScorePreviewAvailability.READY,
+            rendererFormat="musicxml_preview",
+            pageCount=max(canonical_summary.partCount, 1) if canonical_summary is not None else 1,
+            revisionToken=transformation_job.result_revision_token,
+            safeSummary="A transformed result artifact is ready for read-only preview.",
+            previewAccess=(
+                f"/transformations/{transformation_job.id}/preview/content"
+                f"?revision={quote(transformation_job.result_revision_token, safe='')}"
+            ),
+            originalFilename=transformation_job.result_filename or score_document.original_filename,
+            canonicalScoreSummary=canonical_summary,
+        )
+
     return ScorePreviewResponse(
         scoreDocumentId=score_document.id,
         artifactRole=ScoreArtifactRole.RESULT,
@@ -271,6 +302,29 @@ def _build_canonical_summary(score_document: ScoreDocument) -> Optional[Canonica
                 name=part.get("name", ""),
             )
             for part in (score_document.canonical_score.parts or [])
+        ],
+    )
+
+
+def _build_transformed_summary(transformed_musicxml: str) -> Optional[CanonicalScoreSummary]:
+    parse_result = parse_musicxml(transformed_musicxml.encode("utf-8"))
+    if parse_result.failure is not None or parse_result.canonical_score is None:
+        return None
+
+    canonical_score = parse_result.canonical_score
+    return CanonicalScoreSummary(
+        schemaVersion=canonical_score.schema_version,
+        title=canonical_score.title,
+        partCount=len(canonical_score.parts or []),
+        measureCount=canonical_score.measure_count,
+        noteCount=canonical_score.note_count,
+        restCount=canonical_score.rest_count,
+        parts=[
+            CanonicalScorePartSummary(
+                partId=part.get("id", ""),
+                name=part.get("name", ""),
+            )
+            for part in (canonical_score.parts or [])
         ],
     )
 
@@ -306,7 +360,7 @@ def get_source_score_preview_content(
         )
 
     return Response(
-        content=score_document.source_musicxml,
+        content=ensure_xml_declaration(score_document.source_musicxml),
         media_type="application/vnd.recordare.musicxml+xml",
     )
 

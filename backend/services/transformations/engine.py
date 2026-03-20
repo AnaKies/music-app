@@ -3,6 +3,7 @@ from typing import List, Optional
 from xml.etree import ElementTree
 
 from backend.api.schemas.transformations import TransformationWarning, TransformationWarningSeverity
+from backend.services.shared.musicxml import serialize_musicxml_document
 from backend.services.shared.note_ranges import parse_note_name_to_midi
 STEP_TO_SEMITONE = {
     "C": 0,
@@ -93,7 +94,7 @@ def transform_musicxml_to_target_range(
             )
         )
 
-    transformed_musicxml = ElementTree.tostring(root, encoding="unicode")
+    transformed_musicxml = serialize_musicxml_document(root)
     return TransformationEngineResult(
         transformed_musicxml=transformed_musicxml,
         semitone_shift=semitone_shift,

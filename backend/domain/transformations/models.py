@@ -21,4 +21,8 @@ class TransformationJob(Base):
     safe_summary = Column(String, nullable=False)
     warnings = Column(JSON, nullable=False, default=list)
     transformed_musicxml = Column(Text, nullable=True)
+    result_storage_uri = Column(String, nullable=True)
+    result_filename = Column(String, nullable=True)
+    result_revision_token = Column(String, nullable=True)
+    exported_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

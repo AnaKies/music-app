@@ -78,8 +78,12 @@ export default function CaseDetailPage() {
   }, [caseId]);
 
   const activeScoreDocumentId = uploadResult?.scoreDocumentId ?? caseDetail?.latestScoreDocumentId ?? null;
-  const previewResult: ScorePreviewResponse | null = scoreResult?.sourcePreview ?? null;
-  const isNotationPreviewReady = previewResult?.availability === 'ready';
+  const sourcePreviewResult: ScorePreviewResponse | null = scoreResult?.sourcePreview ?? null;
+  const resultPreviewResult: ScorePreviewResponse | null = scoreResult?.resultPreview ?? null;
+  const previewResult: ScorePreviewResponse | null =
+    activePreviewMode === 'result' ? resultPreviewResult : sourcePreviewResult;
+  const isNotationPreviewReady = sourcePreviewResult?.availability === 'ready';
+  const isResultPreviewReady = resultPreviewResult?.availability === 'ready';
 
   useEffect(() => {
     let isMounted = true;
@@ -194,6 +198,9 @@ export default function CaseDetailPage() {
         selectedRecommendationId
       );
       setTransformationResult(result);
+      const refreshedScore = await scoresApi.getScore(activeScoreDocumentId);
+      setScoreResult(refreshedScore);
+      setActivePreviewMode('result');
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.message);
@@ -454,8 +461,11 @@ export default function CaseDetailPage() {
                         type="button"
                         role="tab"
                         aria-selected={activePreviewMode === 'result'}
-                        className="score-preview__tab score-preview__tab--disabled"
-                        disabled
+                        className={`score-preview__tab ${activePreviewMode === 'result' ? 'score-preview__tab--active' : ''} ${
+                          !isResultPreviewReady ? 'score-preview__tab--disabled' : ''
+                        }`}
+                        disabled={!isResultPreviewReady}
+                        onClick={() => setActivePreviewMode('result')}
                       >
                         Result
                       </button>
@@ -500,7 +510,7 @@ export default function CaseDetailPage() {
                           ) : null}
                         </div>
                         <p className="score-preview__note">
-                          Preview stays read-only. Result comparison becomes available after a later result artifact exists.
+                          Preview stays read-only. Result comparison becomes available once a transformed result artifact exists.
                         </p>
                       </>
                     ) : (

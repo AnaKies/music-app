@@ -349,41 +349,89 @@ describe('CaseDetailPage', () => {
         },
       },
     });
-    vi.mocked(scoresApi.getScore).mockResolvedValue({
-      scoreDocumentId: 'score-123',
-      transpositionCaseId: 'existing-case-1',
-      processingStatus: 'recommendation_pending',
-      originalFilename: 'example.musicxml',
-      safeSummary: 'The score is parsed and ready for recommendation generation.',
-      sourcePreview: {
+    vi.mocked(scoresApi.getScore)
+      .mockResolvedValueOnce({
         scoreDocumentId: 'score-123',
-        artifactRole: 'source',
-        availability: 'ready',
-        rendererFormat: 'musicxml_preview',
-        pageCount: 1,
-        revisionToken: '2026-03-20T10:00:00+00:00',
-        safeSummary: 'The uploaded score is ready for read-only preview.',
-        previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+        transpositionCaseId: 'existing-case-1',
+        processingStatus: 'recommendation_pending',
         originalFilename: 'example.musicxml',
-        canonicalScoreSummary: {
-          schemaVersion: 'v1',
-          title: null,
-          partCount: 1,
-          measureCount: 1,
-          noteCount: 1,
-          restCount: 0,
-          parts: [{ partId: 'P1', name: 'Flute' }],
+        safeSummary: 'The score is parsed and ready for recommendation generation.',
+        sourcePreview: {
+          scoreDocumentId: 'score-123',
+          artifactRole: 'source',
+          availability: 'ready',
+          rendererFormat: 'musicxml_preview',
+          pageCount: 1,
+          revisionToken: '2026-03-20T10:00:00+00:00',
+          safeSummary: 'The uploaded score is ready for read-only preview.',
+          previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+          originalFilename: 'example.musicxml',
+          canonicalScoreSummary: {
+            schemaVersion: 'v1',
+            title: null,
+            partCount: 1,
+            measureCount: 1,
+            noteCount: 1,
+            restCount: 0,
+            parts: [{ partId: 'P1', name: 'Flute' }],
+          },
         },
-      },
-      resultPreview: {
+        resultPreview: {
+          scoreDocumentId: 'score-123',
+          artifactRole: 'result',
+          availability: 'unavailable',
+          revisionToken: '2026-03-20T10:00:00+00:00',
+          safeSummary: 'A result preview is not available yet because no transformed result artifact exists.',
+          originalFilename: 'example.musicxml',
+        },
+      })
+      .mockResolvedValueOnce({
         scoreDocumentId: 'score-123',
-        artifactRole: 'result',
-        availability: 'unavailable',
-        revisionToken: '2026-03-20T10:00:00+00:00',
-        safeSummary: 'A result preview is not available yet because no transformed result artifact exists.',
+        transpositionCaseId: 'existing-case-1',
+        processingStatus: 'completed',
         originalFilename: 'example.musicxml',
-      },
-    });
+        safeSummary: 'The score has a transformed result artifact ready.',
+        sourcePreview: {
+          scoreDocumentId: 'score-123',
+          artifactRole: 'source',
+          availability: 'ready',
+          rendererFormat: 'musicxml_preview',
+          pageCount: 1,
+          revisionToken: '2026-03-20T10:00:00+00:00',
+          safeSummary: 'The uploaded score is ready for read-only preview.',
+          previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+          originalFilename: 'example.musicxml',
+          canonicalScoreSummary: {
+            schemaVersion: 'v1',
+            title: null,
+            partCount: 1,
+            measureCount: 1,
+            noteCount: 1,
+            restCount: 0,
+            parts: [{ partId: 'P1', name: 'Flute' }],
+          },
+        },
+        resultPreview: {
+          scoreDocumentId: 'score-123',
+          artifactRole: 'result',
+          availability: 'ready',
+          rendererFormat: 'musicxml_preview',
+          pageCount: 1,
+          revisionToken: '2026-03-20T11:00:00+00:00',
+          safeSummary: 'A transformed result artifact is ready for read-only preview.',
+          previewAccess: '/transformations/job-1/preview/content?revision=2026-03-20T11%3A00%3A00%2B00%3A00',
+          originalFilename: 'example-transformed.musicxml',
+          canonicalScoreSummary: {
+            schemaVersion: 'v1',
+            title: null,
+            partCount: 1,
+            measureCount: 1,
+            noteCount: 1,
+            restCount: 0,
+            parts: [{ partId: 'P1', name: 'Flute' }],
+          },
+        },
+      });
     vi.mocked(recommendationsApi.generateRecommendations).mockResolvedValue({
       status: 'ready',
       transpositionCaseId: 'existing-case-1',
@@ -462,6 +510,7 @@ describe('CaseDetailPage', () => {
       );
     });
     expect(await screen.findByText(/The deterministic transformation completed successfully\./i)).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: /result/i })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('renders a calm failed preview state for an existing uploaded score', async () => {
