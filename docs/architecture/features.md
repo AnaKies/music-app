@@ -31,7 +31,8 @@ flowchart TD
     F5 --> F6[Build Recommendation Context]
     F6 --> F7[Generate Recommendations]
     F7 --> F8[Review and Select Recommendation]
-    F8 --> F9[Run Deterministic Transformation]
+    F8 --> F8b[Preview Original and Result Scores]
+    F8b --> F9[Run Deterministic Transformation]
     F9 --> F10[Export MusicXML Result]
     F10 --> F11[Show Result Status]
     F11 --> F12[Download Result]
@@ -216,6 +217,28 @@ Responsible agents:
 
 Why it is small:
 This feature is about decision presentation, not score mutation.
+
+### F8b. Safe Score Preview And Result Comparison
+
+Goal:
+Let the user inspect the uploaded source score through a safe read-only preview before transformation, and inspect the result score through the same preview capability after result artifacts exist.
+
+Scope:
+
+- show a read-only preview of the uploaded source score
+- reuse the same preview capability for result artifacts only after export or result-readiness contracts exist
+- support a simple `Original` versus `Result` toggle or comparison mode when both previews are available
+- expose safe preview availability and failure states without rendering raw internal artifacts
+
+Responsible agents:
+
+- lead: `Architect` for boundary and placement
+- implementation lead: `Frontend`
+- support: `Backend`, `Test`, `Safety`
+- consult: `Designer`
+
+Why it is small:
+This feature defines one read-only preview capability and its safe UX boundary. It excludes transformation, export, download, editing, and detailed notation diffing.
 
 ### F9. Deterministic Transformation
 

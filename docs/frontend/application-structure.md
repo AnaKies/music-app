@@ -14,6 +14,7 @@ This document defines the planned page, feature, and state structure of the MVP 
 - `cases`: case listing, default-entry selection, create, switch, and reset interactions
 - `interview`: question rendering, answer submission, validation, progress state
 - `upload`: file selection, upload handling, parsing feedback
+- `preview`: read-only source and result score preview with safe fallback states
 - `recommendations`: recommendation list, stale-state handling, warnings, selection
 - `transformation`: job polling, progress state, retry handling
 - `results`: download action, optional print handoff, warning summary
@@ -24,6 +25,7 @@ This document defines the planned page, feature, and state structure of the MVP 
 - `workspace-shell`: the consistent stage frame used across interview, upload, recommendation, transformation, and result screens
 - `stage-header`: title, progress framing, and local status summary
 - `status-strip`: compact status, warning, confidence, and failure communication near the active work area
+- `score-preview`: read-only notation or score-preview container with explicit mode switching
 - `recommendation-card`: primary and secondary recommendation presentation with selection affordance
 - `action-panel`: the main decision or submission zone within a stage
 - `context-panel`: secondary contextual information such as case summary or warning explanation
@@ -60,6 +62,7 @@ flowchart TD
     APP --> CASES[Cases Feature]
     APP --> INTERVIEW[Interview Feature]
     APP --> UPLOAD[Upload Feature]
+    APP --> PREVIEW[Preview Feature]
     APP --> REC[Recommendations Feature]
     APP --> TX[Transformation Feature]
     APP --> RESULT[Results Feature]
@@ -68,6 +71,7 @@ flowchart TD
     INTERVIEW --> API
     INTERVIEW --> VALID[Validation Layer]
     UPLOAD --> API
+    PREVIEW --> API
     REC --> API
     TX --> API
     RESULT --> API
@@ -101,6 +105,7 @@ This file owns the internal frontend structure and the implementation shape of t
 - Interview screen: render question objects and submit structured answers
 - Upload screen: block upload until the selected case is ready and show parsing status
 - Upload screen: poll score-status snapshots after upload acceptance until parsing and recommendation readiness become visible
+- Preview screen or workspace section: expose read-only source and result preview states with a clear `Original` versus `Result` switch when both are available
 - Recommendation screen: show primary and secondary recommendations, warnings, and stale state
 - Transformation screen: show progress, retry path, and failure messaging
 - Result screen: expose MusicXML download and optional print handoff
@@ -110,12 +115,14 @@ This file owns the internal frontend structure and the implementation shape of t
 - The frontend should implement a repeated workspace-shell pattern instead of inventing a different layout composition for each stage.
 - Recommendation cards should exist as a dedicated component family because they are the most product-specific interaction element in the MVP.
 - Status chips, warning callouts, and confidence markers should share one visual logic so queued, processing, low-confidence, failure, and completion states do not drift between screens.
+- Preview should remain a calm review surface, not a notation editor or dense debugging tool.
 
 ## Safety Alignment Notes
 
 - Retry actions should be rendered only when backend status metadata explicitly marks the path as retryable.
 - User-facing status areas should prefer `safeSummary` and typed severity metadata instead of raw technical diagnostics.
 - The frontend should not render raw upload contents, raw provider output, internal storage paths, or backend exception text as normal workflow UI.
+- Score preview must remain read-only, route through typed backend preview contracts, and fail into safe empty or unavailable states instead of exposing raw artifact internals.
 - Low-confidence recommendations must remain visually distinct from normal success or completion states.
 
 ## Testing Priorities
@@ -123,6 +130,7 @@ This file owns the internal frontend structure and the implementation shape of t
 - verify case entry and case switching behavior
 - verify interview question rendering for multiple question types
 - verify upload gating based on case readiness
+- verify source and result preview readiness, toggle behavior, and safe fallback states
 - verify `queued`, `parsing`, recommendation-ready, and failed states render from typed backend snapshots rather than mutation assumptions
 - verify stale recommendation behavior after case edits
 - verify transformation polling and result-state transitions

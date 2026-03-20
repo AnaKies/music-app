@@ -48,7 +48,7 @@ This file owns the internal module structure and responsibility boundaries insid
 
 ## Diagram Legend
 
-- `Frontend`: user-facing flow for case selection, questionnaire, upload, recommendation choice, and result access
+- `Frontend`: user-facing flow for case selection, questionnaire, upload, preview, recommendation choice, and result access
 - `Backend API`: external system entry point and coordination layer for requests and responses
 - `Transposition Case Service`: persistence and lifecycle handling for reusable user/instrument context
 - `Score Parser`: validation and normalization of uploaded MusicXML
@@ -67,13 +67,14 @@ This file owns the internal module structure and responsibility boundaries insid
 ### Frontend
 
 Purpose:
-Collect questionnaire input, upload score files, present AI recommendations, and present processing results.
+Collect questionnaire input, upload score files, present safe score previews, present AI recommendations, and present processing results.
 
 Responsibilities:
 
 - run the AI-guided questionnaire flow
 - let the user select, resume, or reset a transposition case
 - upload MusicXML files
+- present safe read-only source and result score previews where available
 - display recommended target ranges
 - collect the user-selected recommendation
 - show job progress and warnings
@@ -93,6 +94,7 @@ Responsibilities:
 - persistence coordination
 - status reporting
 - expose durable score and transformation status snapshots for frontend polling
+- expose preview-availability and preview-failure metadata without leaking internal artifact details
 - result delivery
 
 ### Input And Presentation Safety Guard
@@ -107,6 +109,7 @@ Responsibilities:
 - normalize user-facing failure and status data into presentation-safe forms
 - keep raw diagnostics and internal implementation detail out of normal frontend contracts
 - accept MusicXML-family uploads (`.musicxml`, `.xml`, `.mxl`) before parser execution
+- constrain score preview to explicit read-only contracts rather than raw artifact rendering
 
 ### AI Interview Service
 
@@ -232,6 +235,7 @@ Responsibilities:
 
 - object storage for original and transformed files
 - metadata store for jobs, requests, warnings, and document references
+- preview-readable artifact references only through typed backend-owned contracts
 
 ## Ownership Boundaries
 

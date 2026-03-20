@@ -149,6 +149,7 @@ Required areas:
 - parser failure typing
 - recommendation failure typing
 - transformation failure typing
+- preview readiness and preview failure typing when safe score preview is introduced
 - no raw exception text in user-facing read models
 - no raw prompt or provider output in user-facing recommendation payloads
 - no raw storage paths in normal frontend contracts
@@ -166,6 +167,7 @@ Required assertions:
 - presentation metadata remains normalized and safe for UI rendering
 - recommendation traces remain linked to case and score context
 - stale recommendation state is visible after relevant case changes
+- preview-readiness and download-readiness remain distinct when score preview exists
 
 ### 7. Deployment And Environment Smoke Tests
 
@@ -191,6 +193,7 @@ The following architecture features are regression-critical and should always re
 - `F6` Recommendation Context Assembly
 - `F7` Recommendation Generation
 - `F8` Recommendation Review And Selection
+- `F8b` Safe Score Preview And Result Comparison
 - `F9` Deterministic Transformation
 - `F10` Result Export
 - `F11` Processing Status Visibility

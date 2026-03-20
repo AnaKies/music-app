@@ -33,6 +33,33 @@ Operational notes:
 Original and transformed artifacts should always be stored separately.
 `storageUri` is internal persistence metadata and should not be exposed directly as a user-facing read-model field.
 
+### ScorePreviewSnapshot
+
+Purpose:
+Represent a read-only, presentation-safe projection of a score artifact for viewer use.
+
+Key fields:
+
+- `id`
+- `scoreDocumentId`
+- `artifactRole` with values `source` or `result`
+- `rendererFormat`
+- `availability`
+- `pageCount`
+- `revisionToken`
+- `failureCode`
+- `safeSummary`
+- `createdAt`
+
+Lifecycle:
+Created when a score can be rendered safely for preview.
+Replaced when the underlying score artifact changes.
+
+Operational notes:
+This entity is a preview projection, not a downloadable artifact.
+It must not expose `storageUri`, raw export paths, or internal renderer diagnostics.
+Download authorization and preview authorization must remain separate concerns.
+
 ### CanonicalScore
 
 Purpose:

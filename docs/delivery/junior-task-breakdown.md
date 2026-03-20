@@ -250,6 +250,27 @@ Tasks:
 Parallelization note:
 `Frontend-12` and `Designer-1` can start immediately. The card-specific implementation tasks should wait for the final recommendation payload.
 
+## [F8b. Safe Score Preview And Result Comparison](./task-briefs/f8b-score-preview.md#f8b-safe-score-preview-and-result-comparison)
+
+Goal:
+Let the user inspect the uploaded score before transformation and inspect the result score only after exported result artifacts are available.
+
+Tasks:
+
+- [`Architect-1`](./task-briefs/f8b-score-preview.md#architect-1) `[Parallel now]` Define the preview boundary, route placement, and safety constraints.
+- [`Backend-25a`](./task-briefs/f8b-score-preview.md#backend-25a) `[After architecture]` Expose source-score preview availability and safe preview metadata.
+- [`Backend-25b`](./task-briefs/f8b-score-preview.md#backend-25b) `[After architecture]` Expose result-score preview availability and safe preview metadata.
+- [`Frontend-17a`](./task-briefs/f8b-score-preview.md#frontend-17a) `[After architecture]` Create the preview workspace scaffold.
+- [`Frontend-17b`](./task-briefs/f8b-score-preview.md#frontend-17b) `[After backend]` Add source-score preview rendering.
+- [`Frontend-17c`](./task-briefs/f8b-score-preview.md#frontend-17c) `[After backend]` Add result-score preview rendering.
+- [`Frontend-17d`](./task-briefs/f8b-score-preview.md#frontend-17d) `[After backend]` Add the `Original` versus `Result` toggle or comparison mode.
+- [`Safety-5a`](./task-briefs/f8b-score-preview.md#safety-5a) `[After architecture]` Review that the preview stays read-only and presentation-safe.
+- [`Test-28a`](./task-briefs/f8b-score-preview.md#test-28a) `[After frontend]` Add a UI test for source-score preview.
+- [`Test-28b`](./task-briefs/f8b-score-preview.md#test-28b) `[After frontend]` Add a UI test for result-score preview and preview failure states.
+
+Parallelization note:
+Architecture and safety boundaries should be agreed first. Source preview can proceed after that. Result preview work must wait for the approved result-artifact and read-model contract from later delivery stages.
+
 ## [F9. Deterministic Transformation](./task-briefs/f9-f12.md#f9-deterministic-transformation)
 
 Goal:

@@ -204,7 +204,7 @@ Retrieve the current status snapshot for an uploaded score document.
 
 Contract shape:
 
-- output: `scoreDocumentId`, processing status, active `transpositionCaseId`, recommendation snapshot summary, stale flag when applicable, warnings, failure details, available artifact references, normalized presentation metadata
+- output: `scoreDocumentId`, processing status, active `transpositionCaseId`, recommendation snapshot summary, stale flag when applicable, warnings, failure details, available artifact references, normalized presentation metadata, and preview read models
 
 Recommended score processing status values:
 
@@ -217,12 +217,30 @@ Recommended score processing status values:
 - `completed`
 - `failed`
 
+Recommended preview read-model shape:
+
+- `sourcePreview`
+- `resultPreview`
+
+Recommended preview object fields:
+
+- `availability` with values `ready`, `not_ready`, `unavailable`, or `failed`
+- `artifactRole` with values `source` or `result`
+- `rendererFormat` such as `musicxml_preview`
+- `pageCount` when known
+- `revisionToken` for cache-safe viewer refresh
+- `safeSummary`
+- `failureCode` when `availability` is `failed`
+- `failureSeverity`
+- `previewAccess` as a preview-only reference or token, never a raw storage path or download URL
+
 Recommended presentation metadata fields:
 
 - `severity` for warning and failure rendering
 - `isRetryable`
 - `confidence` when recommendation state is involved
 - `safeSummary` for concise user-facing status explanation without leaking raw internal errors
+- `previewMode` when the frontend needs to distinguish source-only, result-only, and comparison-capable preview states
 
 Safety note:
 Read models must not expose raw provider output, raw prompts, internal storage paths, or raw backend exception text through user-facing status contracts.
@@ -237,6 +255,9 @@ Backend API
 
 Evolution:
 Additional score-summary metadata should be additive and must preserve the stable status meanings used by frontend polling.
+
+Preview note:
+Score read models may expose preview-readiness and safe preview metadata, but they must not expose raw storage URIs, editable file handles, or any contract that bypasses backend-owned access control and safety normalization.
 
 ### `POST /recommendations`
 
@@ -355,6 +376,58 @@ This interface may later support PDF or MIDI exports in addition to MusicXML.
 
 Frontend note:
 For the MVP, download of MusicXML is required. Direct print support is optional and may be implemented as a frontend convenience feature rather than a backend-specific output format.
+
+### `GET /scores/{id}/preview`
+
+Purpose:
+Retrieve or authorize read-only preview access for the source score.
+
+Contract shape:
+
+- output: preview session metadata for the source artifact only
+- never returns the downloadable artifact itself
+- fails with typed preview states such as `not_ready`, `unsupported`, or `failed`
+
+Failure behavior:
+
+- return not found for unknown scores
+- return a typed unavailable state when the requested source preview cannot be produced
+- return failed safely when preview generation or preview retrieval cannot complete
+
+Ownership:
+Backend API
+
+Evolution:
+The preview contract may evolve in a backward-compatible way, but it must remain read-only and must not become an editing or raw artifact access path.
+
+Safety note:
+Preview responses must remain presentation-safe. They must not expose internal storage paths, unbounded raw diagnostics, or mutable artifact references.
+
+### `GET /transformations/{id}/preview`
+
+Purpose:
+Retrieve or authorize read-only preview access for the transformed result.
+
+Contract shape:
+
+- output: preview session metadata for the result artifact only
+- preview access is distinct from download access and must not imply export delivery
+- fails with typed preview states such as `not_ready`, `not_generated`, or `failed`
+
+Failure behavior:
+
+- return not found for unknown transformations
+- return a typed unavailable state when the result artifact does not exist yet
+- return failed safely when preview generation or preview retrieval cannot complete
+
+Ownership:
+Backend API
+
+Evolution:
+The result-preview contract may evolve in a backward-compatible way, but it must remain read-only and must not become a download or editing backchannel.
+
+Safety note:
+Result-preview responses must remain presentation-safe and must not expose raw storage paths, raw renderer diagnostics, or download-capable links.
 
 ## Internal Contracts
 

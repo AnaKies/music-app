@@ -102,6 +102,7 @@ Recommended top-level flow:
 - interview
 - upload
 - recommendation review
+- safe score preview
 - transformation status
 - result
 
@@ -213,6 +214,7 @@ Close the loop with clear access to the transformed output.
 Design behavior:
 
 - emphasize successful result availability
+- use result preview as a trust-building verification surface when available
 - keep the primary action on download
 - place print as a secondary or contextual action
 - make "upload another score in same case" easy to reach
@@ -315,11 +317,13 @@ Desktop:
 
 - two-column compositions for recommendation and result-heavy screens
 - persistent stage framing is acceptable
+- in preview-capable result states, use preview as the primary column and actions or status as the secondary column
 
 Mobile:
 
 - single-column flow
 - stacked action areas
+- place the `Original` / `Result` switch above the preview and keep download below the preview area
 - progress framing compressed into a simpler step indicator
 
 The interview and recommendation screens should remain fully usable on mobile, even if print-related interactions are naturally secondary there.

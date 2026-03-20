@@ -199,6 +199,7 @@ The frontend should:
 - expose retry only when the backend marks a path as retryable
 - keep download and result access separate from internal diagnostic details
 - avoid rendering raw uploaded score content as normal workflow UI unless a later dedicated safe preview design is explicitly added
+- if a dedicated score preview is added, keep it read-only, preview-only, and separate from download authorization
 - prefer typed presentation metadata such as severity and safe summaries over raw internal error text
 
 ## MVP Safety Checklist
@@ -211,6 +212,7 @@ The frontend should:
 - stale recommendations are blocked from execution
 - deterministic transformation does not consume unchecked AI text
 - original and transformed artifacts are stored separately
+- any preview projection remains separated from downloadable artifacts and raw storage references
 - frontend reads presentation-safe status metadata
 - failures are typed and step-specific
 
@@ -224,6 +226,7 @@ The following safety checks should be backed by automated verification where pra
 - blocked-confidence recommendation handling
 - stale recommendation blocking
 - absence of raw diagnostics and raw provider text in normal user-facing payloads
+- preview contracts remain read-only and do not expose raw artifact locations or download-capable links
 - retry visibility only on retryable paths
 
 ## Ownership
