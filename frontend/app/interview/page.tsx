@@ -220,6 +220,7 @@ export default function InterviewPage() {
   }, [currentQuestion, draft, responseState, syncResponse]);
 
   const validationMessage = getValidationMessage(currentQuestion, draft);
+  const isReadyForUpload = responseState?.derivedCaseSummary.caseStatus === 'ready_for_upload';
 
   return (
     <main className="interview-page">
@@ -382,9 +383,13 @@ export default function InterviewPage() {
             <div className="interview-complete">
               <CheckCircle2 className="interview-complete__icon" />
               <div>
-                <h2 className="interview-complete__title">Interview session complete</h2>
+                <h2 className="interview-complete__title">
+                  {isReadyForUpload ? 'Interview session complete' : 'Interview data still needs clarification'}
+                </h2>
                 <p className="interview-complete__text">
-                  The interview has collected enough structured constraints for the next backend persistence step.
+                  {isReadyForUpload
+                    ? 'The interview has collected enough structured constraints for the next backend persistence step.'
+                    : 'The interview reached the end of the current question set, but the confirmed constraints are still not sufficient for upload readiness.'}
                 </p>
               </div>
             </div>

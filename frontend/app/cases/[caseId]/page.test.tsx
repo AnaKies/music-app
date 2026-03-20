@@ -1,8 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent } from '@testing-library/react';
 
 import CaseDetailPage from './page';
 import { casesApi } from '@/shared/api/cases';
+import { scoresApi } from '@/shared/api/scores';
 
 vi.mock('@/shared/api/cases', () => ({
   casesApi: {
@@ -13,6 +15,12 @@ vi.mock('@/shared/api/cases', () => ({
       super(message);
       this.name = 'ApiError';
     }
+  },
+}));
+
+vi.mock('@/shared/api/scores', () => ({
+  scoresApi: {
+    uploadScore: vi.fn(),
   },
 }));
 
@@ -56,6 +64,7 @@ describe('CaseDetailPage', () => {
     expect(await screen.findByText('Case overview')).toBeInTheDocument();
     expect(screen.getByText('trumpet-bb')).toBeInTheDocument();
     expect(screen.getByText('Status: ready_for_upload')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /upload musicxml/i })).toBeDisabled();
   });
 
   it('offers an interview action for in-progress cases', async () => {
@@ -110,5 +119,69 @@ describe('CaseDetailPage', () => {
 
     await screen.findByText('Case overview');
     expect(screen.queryByRole('link', { name: /interview/i })).not.toBeInTheDocument();
+  });
+
+  it('uploads a MusicXML file for ready cases', async () => {
+    vi.mocked(casesApi.getCase)
+      .mockResolvedValueOnce({
+        id: 'existing-case-1',
+        status: 'ready_for_upload',
+        instrumentIdentity: 'trumpet-bb',
+        scoreCount: 0,
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-16T12:00:00Z',
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: 'G3',
+          comfort_range_max: 'D5',
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'existing-case-1',
+        status: 'ready_for_upload',
+        instrumentIdentity: 'trumpet-bb',
+        scoreCount: 1,
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-16T12:00:00Z',
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: 'G3',
+          comfort_range_max: 'D5',
+        },
+      });
+    vi.mocked(scoresApi.uploadScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      format: 'musicxml',
+      acceptedStatus: 'uploaded',
+      originalFilename: 'example.musicxml',
+      initialProcessingSnapshot: {
+        scoreDocumentId: 'score-123',
+        transpositionCaseId: 'existing-case-1',
+        processingStatus: 'uploaded',
+        acceptedAt: '2026-03-19T10:00:00Z',
+      },
+    });
+
+    render(<CaseDetailPage />);
+
+    const fileInput = await screen.findByLabelText('MusicXML file');
+    const file = new File(['<score-partwise></score-partwise>'], 'example.musicxml', { type: 'application/xml' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /upload musicxml/i }));
+
+    await waitFor(() => {
+      expect(scoresApi.uploadScore).toHaveBeenCalledWith('existing-case-1', file);
+    });
+    expect(await screen.findByText('Upload accepted')).toBeInTheDocument();
   });
 });

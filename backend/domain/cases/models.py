@@ -1,6 +1,9 @@
 import uuid
 from datetime import datetime, timezone
+
 from sqlalchemy import Column, String, DateTime, Enum, JSON
+from sqlalchemy.orm import relationship
+
 from backend.database import Base
 from backend.api.schemas.cases import CaseStatus
 
@@ -29,10 +32,11 @@ class TranspositionCase(Base):
     comfort_range_min = Column(String, nullable=True)
     comfort_range_max = Column(String, nullable=True)
 
+    scores = relationship("ScoreDocument", back_populates="case", cascade="all, delete-orphan")
+
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     @property
     def score_count(self) -> int:
-        # Placeholder for the number of linked scores
-        return 0
+        return len(self.scores or [])

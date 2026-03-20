@@ -361,6 +361,136 @@ def test_completed_interview_marks_case_ready_for_upload():
         connection.close()
 
 
+def test_placeholder_range_values_do_not_trigger_ready_for_upload():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "trumpet-bb"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": []},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "no data", "max": "no data"}},
+                },
+            )
+            final_step = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "additional_context",
+                    "answer": {"text": "clear and playable"},
+                },
+            )
+            case_detail = client.get("/cases/case-f2-1")
+
+        assert final_step.status_code == 200
+        assert final_step.json()["status"] == "completed"
+        assert final_step.json()["derivedCaseSummary"]["caseStatus"] == "interview_in_progress"
+        assert case_detail.status_code == 200
+        assert case_detail.json()["status"] == "interview_in_progress"
+        assert case_detail.json()["constraints"]["comfort_range_min"] == "no data"
+        assert case_detail.json()["constraints"]["comfort_range_max"] == "no data"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_short_negation_range_values_do_not_trigger_ready_for_upload():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "flute"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": []},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "no", "max": "no"}},
+                },
+            )
+            final_step = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "additional_context",
+                    "answer": {"text": "no"},
+                },
+            )
+            case_detail = client.get("/cases/case-f2-1")
+
+        assert final_step.status_code == 200
+        assert final_step.json()["status"] == "completed"
+        assert final_step.json()["derivedCaseSummary"]["caseStatus"] == "interview_in_progress"
+        assert case_detail.status_code == 200
+        assert case_detail.json()["status"] == "interview_in_progress"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
 def test_low_confidence_follow_up_does_not_finalize_case_until_clarification_is_complete():
     _reset_tables()
 

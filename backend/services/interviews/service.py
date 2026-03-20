@@ -37,13 +37,33 @@ LOW_CONFIDENCE_PHRASES = (
     "do not know",
 )
 
+RANGE_PLACEHOLDER_VALUES = {
+    "no",
+    "no data",
+    "n/a",
+    "na",
+    "unknown",
+    "-",
+}
+
+
+def _is_effective_range_value(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+
+    normalized = value.strip().lower()
+    if not normalized or normalized in RANGE_PLACEHOLDER_VALUES:
+        return False
+
+    return True
+
 
 def _has_confirmed_constraints_for_upload(case: TranspositionCase) -> bool:
     return bool(
         case.instrument_identity
         and case.instrument_identity != "placeholder"
-        and case.comfort_range_min
-        and case.comfort_range_max
+        and _is_effective_range_value(case.comfort_range_min)
+        and _is_effective_range_value(case.comfort_range_max)
     )
 
 
