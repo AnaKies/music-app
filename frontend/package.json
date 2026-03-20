@@ -20,6 +20,7 @@
     "clsx": "^2.0.0",
     "lucide-react": "^0.284.0",
     "next": "latest",
+    "opensheetmusicdisplay": "^1.9.7",
     "react": "latest",
     "react-dom": "latest",
     "react-hook-form": "^7.47.0",

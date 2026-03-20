@@ -1,16 +1,20 @@
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
+from typing import Optional
 from zipfile import BadZipFile, ZipFile
 
-from fastapi import HTTPException, UploadFile, status
+from fastapi import HTTPException, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from backend.api.schemas.cases import CaseStatus
 from backend.api.schemas.scores import (
     CanonicalScorePartSummary,
     CanonicalScoreSummary,
+    ScoreArtifactRole,
     ScoreFormat,
+    ScorePreviewAvailability,
+    ScorePreviewResponse,
     ScoreProcessingSnapshot,
     ScoreProcessingStatus,
     ScoreUploadResponse,
@@ -66,6 +70,7 @@ def accept_score_upload(
         format=ScoreFormat.MUSICXML,
         processing_status=ScoreProcessingStatus.UPLOADED,
         storage_uri=f"local://scores/{transposition_case_id}/{filename}",
+        source_musicxml=xml_payload.decode("utf-8", errors="ignore"),
         content_size=content_size,
     )
     db.add(score_document)
@@ -130,6 +135,123 @@ def accept_score_upload(
             parseFailureType=parse_failure_type,
             canonicalScoreSummary=canonical_summary,
         ),
+    )
+
+
+def get_source_score_preview(
+    db: Session,
+    score_document_id: str,
+) -> ScorePreviewResponse:
+    score_document = db.query(ScoreDocument).filter(ScoreDocument.id == score_document_id).first()
+    if score_document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Score with id {score_document_id} not found.",
+        )
+
+    canonical_summary = _build_canonical_summary(score_document)
+    revision_token = _build_revision_token(score_document)
+
+    if (
+        score_document.processing_status == ScoreProcessingStatus.PARSED
+        and canonical_summary is not None
+        and score_document.source_musicxml
+    ):
+        return ScorePreviewResponse(
+            scoreDocumentId=score_document.id,
+            artifactRole=ScoreArtifactRole.SOURCE,
+            availability=ScorePreviewAvailability.READY,
+            rendererFormat="musicxml_preview",
+            pageCount=max(canonical_summary.partCount, 1),
+            revisionToken=revision_token,
+            safeSummary="The uploaded score is ready for read-only preview.",
+            previewAccess=f"/scores/{score_document.id}/preview/content?revision={revision_token}",
+            originalFilename=score_document.original_filename,
+            canonicalScoreSummary=canonical_summary,
+        )
+
+    if score_document.processing_status == ScoreProcessingStatus.PARSED and canonical_summary is not None:
+        return ScorePreviewResponse(
+            scoreDocumentId=score_document.id,
+            artifactRole=ScoreArtifactRole.SOURCE,
+            availability=ScorePreviewAvailability.UNAVAILABLE,
+            rendererFormat="musicxml_preview",
+            pageCount=max(canonical_summary.partCount, 1),
+            revisionToken=revision_token,
+            safeSummary="This older uploaded score does not have preview content stored yet. Upload it again to render the notation preview.",
+            originalFilename=score_document.original_filename,
+            canonicalScoreSummary=canonical_summary,
+        )
+
+    if score_document.processing_status == ScoreProcessingStatus.PARSE_FAILED:
+        failure_code = score_document.parse_failure_type.value if score_document.parse_failure_type is not None else "parse_failed"
+        return ScorePreviewResponse(
+            scoreDocumentId=score_document.id,
+            artifactRole=ScoreArtifactRole.SOURCE,
+            availability=ScorePreviewAvailability.FAILED,
+            revisionToken=revision_token,
+            safeSummary="The uploaded score could not be prepared for preview.",
+            failureCode=failure_code,
+            failureSeverity="warning",
+            originalFilename=score_document.original_filename,
+        )
+
+    return ScorePreviewResponse(
+        scoreDocumentId=score_document.id,
+        artifactRole=ScoreArtifactRole.SOURCE,
+        availability=ScorePreviewAvailability.NOT_READY,
+        revisionToken=revision_token,
+        safeSummary="The uploaded score is not ready for preview yet.",
+        originalFilename=score_document.original_filename,
+    )
+
+
+def _build_canonical_summary(score_document: ScoreDocument) -> Optional[CanonicalScoreSummary]:
+    if score_document.canonical_score is None:
+        return None
+
+    return CanonicalScoreSummary(
+        schemaVersion=score_document.canonical_score.schema_version,
+        title=score_document.canonical_score.title,
+        partCount=len(score_document.canonical_score.parts or []),
+        measureCount=score_document.canonical_score.measure_count,
+        noteCount=score_document.canonical_score.note_count,
+        restCount=score_document.canonical_score.rest_count,
+        parts=[
+            CanonicalScorePartSummary(
+                partId=part.get("id", ""),
+                name=part.get("name", ""),
+            )
+            for part in (score_document.canonical_score.parts or [])
+        ],
+    )
+
+
+def _build_revision_token(score_document: ScoreDocument) -> str:
+    created_at = score_document.created_at or datetime.now(timezone.utc)
+    return created_at.isoformat()
+
+
+def get_source_score_preview_content(
+    db: Session,
+    score_document_id: str,
+) -> Response:
+    score_document = db.query(ScoreDocument).filter(ScoreDocument.id == score_document_id).first()
+    if score_document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Score with id {score_document_id} not found.",
+        )
+
+    if score_document.processing_status != ScoreProcessingStatus.PARSED or not score_document.source_musicxml:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The requested score preview content is not ready.",
+        )
+
+    return Response(
+        content=score_document.source_musicxml,
+        media_type="application/vnd.recordare.musicxml+xml",
     )
 
 

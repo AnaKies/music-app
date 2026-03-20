@@ -64,6 +64,7 @@ class CaseDetail(BaseModel):
     status: CaseStatus
     instrumentIdentity: str
     scoreCount: int = 0
+    latestScoreDocumentId: Optional[str] = None
     createdAt: datetime
     updatedAt: datetime
     constraints: CaseConstraints = Field(default_factory=CaseConstraints)

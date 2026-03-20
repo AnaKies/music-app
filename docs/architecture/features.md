@@ -225,8 +225,8 @@ Let the user inspect the uploaded source score through a safe read-only preview 
 
 Scope:
 
-- show a read-only preview of the uploaded source score
-- reuse the same preview capability for result artifacts only after export or result-readiness contracts exist
+- show a read-only visual score preview of the uploaded source score as musical notation, not merely as metadata or a raw XML tree
+- reuse the same read-only visual score preview capability for result artifacts only after export or result-readiness contracts exist
 - support a simple `Original` versus `Result` toggle or comparison mode when both previews are available
 - expose safe preview availability and failure states without rendering raw internal artifacts
 

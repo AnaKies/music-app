@@ -53,6 +53,7 @@ export interface CaseSummary {
  * @see backend/api/schemas/cases.py::CaseDetail
  */
 export interface CaseDetail extends CaseSummary {
+  latestScoreDocumentId?: string | null;
   constraints: CaseConstraints;
 }
 

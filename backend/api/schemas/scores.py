@@ -21,6 +21,18 @@ class ParseFailureType(str, Enum):
     EMPTY_SCORE = "empty_score"
 
 
+class ScorePreviewAvailability(str, Enum):
+    READY = "ready"
+    NOT_READY = "not_ready"
+    UNAVAILABLE = "unavailable"
+    FAILED = "failed"
+
+
+class ScoreArtifactRole(str, Enum):
+    SOURCE = "source"
+    RESULT = "result"
+
+
 class CanonicalScorePartSummary(BaseModel):
     partId: str
     name: str
@@ -51,3 +63,18 @@ class ScoreUploadResponse(BaseModel):
     acceptedStatus: ScoreProcessingStatus
     initialProcessingSnapshot: ScoreProcessingSnapshot
     originalFilename: str = Field(description="Original uploaded filename.")
+
+
+class ScorePreviewResponse(BaseModel):
+    scoreDocumentId: str
+    artifactRole: ScoreArtifactRole
+    availability: ScorePreviewAvailability
+    rendererFormat: Optional[str] = None
+    pageCount: Optional[int] = None
+    revisionToken: Optional[str] = None
+    safeSummary: str
+    failureCode: Optional[str] = None
+    failureSeverity: Optional[str] = None
+    previewAccess: Optional[str] = None
+    originalFilename: Optional[str] = None
+    canonicalScoreSummary: Optional[CanonicalScoreSummary] = None

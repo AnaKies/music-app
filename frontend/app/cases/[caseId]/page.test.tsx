@@ -7,6 +7,10 @@ import { casesApi } from '@/shared/api/cases';
 import { recommendationsApi } from '@/shared/api/recommendations';
 import { scoresApi } from '@/shared/api/scores';
 
+vi.mock('@/components/score-preview/ScoreViewer', () => ({
+  ScoreViewer: ({ title }: { title: string }) => <div aria-label={`${title} score viewer`}>Mocked score viewer</div>,
+}));
+
 vi.mock('@/shared/api/cases', () => ({
   casesApi: {
     getCase: vi.fn(),
@@ -22,6 +26,7 @@ vi.mock('@/shared/api/cases', () => ({
 vi.mock('@/shared/api/scores', () => ({
   scoresApi: {
     uploadScore: vi.fn(),
+    getScorePreview: vi.fn(),
   },
 }));
 
@@ -50,6 +55,7 @@ describe('CaseDetailPage', () => {
       scoreCount: 2,
       createdAt: '2024-01-15T10:00:00Z',
       updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: null,
       constraints: {
         highest_playable_tone: 'G5',
         lowest_playable_tone: 'E3',
@@ -82,6 +88,7 @@ describe('CaseDetailPage', () => {
       scoreCount: 0,
       createdAt: '2024-01-15T10:00:00Z',
       updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: null,
       constraints: {
         highest_playable_tone: null,
         lowest_playable_tone: null,
@@ -110,6 +117,7 @@ describe('CaseDetailPage', () => {
       scoreCount: 1,
       createdAt: '2024-01-15T10:00:00Z',
       updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: null,
       constraints: {
         highest_playable_tone: null,
         lowest_playable_tone: null,
@@ -137,6 +145,7 @@ describe('CaseDetailPage', () => {
         scoreCount: 0,
         createdAt: '2024-01-15T10:00:00Z',
         updatedAt: '2024-01-16T12:00:00Z',
+        latestScoreDocumentId: null,
         constraints: {
           highest_playable_tone: null,
           lowest_playable_tone: null,
@@ -155,6 +164,7 @@ describe('CaseDetailPage', () => {
         scoreCount: 1,
         createdAt: '2024-01-15T10:00:00Z',
         updatedAt: '2024-01-16T12:00:00Z',
+        latestScoreDocumentId: 'score-123',
         constraints: {
           highest_playable_tone: null,
           lowest_playable_tone: null,
@@ -187,6 +197,26 @@ describe('CaseDetailPage', () => {
         },
       },
     });
+    vi.mocked(scoresApi.getScorePreview).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      artifactRole: 'source',
+      availability: 'ready',
+      rendererFormat: 'musicxml_preview',
+      pageCount: 1,
+      revisionToken: '2026-03-20T10:00:00+00:00',
+      safeSummary: 'The uploaded score is ready for read-only preview.',
+      previewAccess: 'preview:score-123:2026-03-20T10:00:00+00:00',
+      originalFilename: 'example.musicxml',
+      canonicalScoreSummary: {
+        schemaVersion: 'v1',
+        title: null,
+        partCount: 1,
+        measureCount: 1,
+        noteCount: 0,
+        restCount: 1,
+        parts: [{ partId: 'P1', name: 'Flute' }],
+      },
+    });
 
     render(<CaseDetailPage />);
 
@@ -198,8 +228,17 @@ describe('CaseDetailPage', () => {
     await waitFor(() => {
       expect(scoresApi.uploadScore).toHaveBeenCalledWith('existing-case-1', file);
     });
+    await waitFor(() => {
+      expect(scoresApi.getScorePreview).toHaveBeenCalledWith('score-123');
+    });
     expect(await screen.findByText('Score parsed successfully')).toBeInTheDocument();
     expect(screen.getByText(/Parsed 1 part\(s\) across 1 measure\(s\)\./i)).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /original/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /result/i })).toBeDisabled();
+    expect(screen.getByLabelText('Read-only score preview')).toBeInTheDocument();
+    expect(screen.getByLabelText(/score viewer/i)).toBeInTheDocument();
+    expect(screen.getByText('Mocked score viewer')).toBeInTheDocument();
+    expect(screen.getByText(/The uploaded score is ready for read-only preview\./i)).toBeInTheDocument();
   });
 
   it('renders recommendation cards and allows explicit selection', async () => {
@@ -211,6 +250,7 @@ describe('CaseDetailPage', () => {
         scoreCount: 0,
         createdAt: '2024-01-15T10:00:00Z',
         updatedAt: '2024-01-16T12:00:00Z',
+        latestScoreDocumentId: null,
         constraints: {
           highest_playable_tone: null,
           lowest_playable_tone: null,
@@ -229,6 +269,7 @@ describe('CaseDetailPage', () => {
         scoreCount: 1,
         createdAt: '2024-01-15T10:00:00Z',
         updatedAt: '2024-01-16T12:00:00Z',
+        latestScoreDocumentId: 'score-123',
         constraints: {
           highest_playable_tone: null,
           lowest_playable_tone: null,
@@ -259,6 +300,26 @@ describe('CaseDetailPage', () => {
           restCount: 0,
           parts: [{ partId: 'P1', name: 'Flute' }],
         },
+      },
+    });
+    vi.mocked(scoresApi.getScorePreview).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      artifactRole: 'source',
+      availability: 'ready',
+      rendererFormat: 'musicxml_preview',
+      pageCount: 1,
+      revisionToken: '2026-03-20T10:00:00+00:00',
+      safeSummary: 'The uploaded score is ready for read-only preview.',
+      previewAccess: 'preview:score-123:2026-03-20T10:00:00+00:00',
+      originalFilename: 'example.musicxml',
+      canonicalScoreSummary: {
+        schemaVersion: 'v1',
+        title: null,
+        partCount: 1,
+        measureCount: 1,
+        noteCount: 1,
+        restCount: 0,
+        parts: [{ partId: 'P1', name: 'Flute' }],
       },
     });
     vi.mocked(recommendationsApi.generateRecommendations).mockResolvedValue({
@@ -313,5 +374,44 @@ describe('CaseDetailPage', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /select recommendation/i })[0]);
     expect(await screen.findByText(/A recommendation is selected for the next transformation step/i)).toBeInTheDocument();
+  });
+
+  it('renders a calm failed preview state for an existing uploaded score', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: 'score-failed',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'G3',
+        comfort_range_max: 'D5',
+      },
+    });
+    vi.mocked(scoresApi.getScorePreview).mockResolvedValue({
+      scoreDocumentId: 'score-failed',
+      artifactRole: 'source',
+      availability: 'failed',
+      revisionToken: '2026-03-20T10:00:00+00:00',
+      safeSummary: 'The uploaded score could not be prepared for preview.',
+      failureCode: 'invalid_xml',
+      failureSeverity: 'warning',
+      originalFilename: 'broken.musicxml',
+      canonicalScoreSummary: null,
+    });
+
+    render(<CaseDetailPage />);
+
+    expect(await screen.findByText(/The uploaded score could not be prepared for preview\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Failure type: invalid_xml/i)).toBeInTheDocument();
+    expect(screen.queryByText(/local:\/\//i)).not.toBeInTheDocument();
   });
 });

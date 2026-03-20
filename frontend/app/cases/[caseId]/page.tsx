@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Clock, Loader2, Music } from 'lucide-react';
 
+import { ScoreViewer } from '@/components/score-preview/ScoreViewer';
 import { ApiError, casesApi } from '@/shared/api/cases';
 import { recommendationsApi } from '@/shared/api/recommendations';
 import { scoresApi } from '@/shared/api/scores';
 import type { CaseDetail } from '@/shared/types/cases';
 import type { RecommendationItem, RecommendationResponse } from '@/shared/types/recommendations';
-import type { ScoreUploadResponse } from '@/shared/types/scores';
+import type { ScorePreviewResponse, ScoreUploadResponse } from '@/shared/types/scores';
 
 export default function CaseDetailPage() {
   const params = useParams<{ caseId: string }>();
@@ -22,9 +23,12 @@ export default function CaseDetailPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<ScoreUploadResponse | null>(null);
+  const [previewResult, setPreviewResult] = useState<ScorePreviewResponse | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResponse | null>(null);
   const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
   const [selectedRecommendationId, setSelectedRecommendationId] = useState<string | null>(null);
+  const [activePreviewMode, setActivePreviewMode] = useState<'original' | 'result'>('original');
 
   useEffect(() => {
     let isMounted = true;
@@ -68,6 +72,48 @@ export default function CaseDetailPage() {
     };
   }, [caseId]);
 
+  const activeScoreDocumentId = uploadResult?.scoreDocumentId ?? caseDetail?.latestScoreDocumentId ?? null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPreview(scoreDocumentId: string) {
+      try {
+        setIsLoadingPreview(true);
+        const response = await scoresApi.getScorePreview(scoreDocumentId);
+
+        if (isMounted) {
+          setPreviewResult(response);
+        }
+      } catch (caughtError) {
+        if (!isMounted) {
+          return;
+        }
+
+        if (caughtError instanceof ApiError) {
+          setError(caughtError.message);
+        } else {
+          setError('Could not load the score preview. Please try again.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingPreview(false);
+        }
+      }
+    }
+
+    if (!activeScoreDocumentId) {
+      setPreviewResult(null);
+      return;
+    }
+
+    void loadPreview(activeScoreDocumentId);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeScoreDocumentId]);
+
   async function handleUpload() {
     if (!caseDetail || !selectedFile) {
       return;
@@ -79,9 +125,11 @@ export default function CaseDetailPage() {
       setUploadResult(await scoresApi.uploadScore(caseDetail.id, selectedFile));
       const refreshedCase = await casesApi.getCase(caseDetail.id);
       setCaseDetail(refreshedCase);
+      setPreviewResult(null);
       setRecommendationResult(null);
       setSelectedRecommendationId(null);
       setSelectedFile(null);
+      setActivePreviewMode('original');
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.message);
@@ -227,6 +275,105 @@ export default function CaseDetailPage() {
                     ) : null}
                   </div>
                 </div>
+              ) : null}
+              {activeScoreDocumentId ? (
+                <section className="score-preview" aria-label="Score preview workspace">
+                  <div className="score-preview__header">
+                    <div>
+                      <p className="new-case-hero__eyebrow">F8b · Score Preview</p>
+                      <h3 className="case-entry-section__title">Inspect the uploaded score safely</h3>
+                    </div>
+                    <div className="score-preview__tabs" role="tablist" aria-label="Preview mode">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activePreviewMode === 'original'}
+                        className={`score-preview__tab ${activePreviewMode === 'original' ? 'score-preview__tab--active' : ''}`}
+                        onClick={() => setActivePreviewMode('original')}
+                      >
+                        Original
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activePreviewMode === 'result'}
+                        className="score-preview__tab score-preview__tab--disabled"
+                        disabled
+                      >
+                        Result
+                      </button>
+                    </div>
+                  </div>
+                  <div className="score-preview__panel" aria-live="polite">
+                    {isLoadingPreview ? (
+                      <div className="score-preview__state">
+                        <Loader2 className="case-entry-loader" />
+                        <p className="score-preview__summary">Loading the read-only preview.</p>
+                      </div>
+                    ) : previewResult ? (
+                      <>
+                        <div className="score-preview__status">
+                          <span className={`score-preview__availability score-preview__availability--${previewResult.availability}`}>
+                            {previewResult.availability}
+                          </span>
+                          <p className="score-preview__summary">{previewResult.safeSummary}</p>
+                        </div>
+                        <div className="score-preview__surface" aria-label="Read-only score preview">
+                          <p className="score-preview__surface-label">Read-only preview</p>
+                          <h4 className="score-preview__surface-title">
+                            {previewResult.canonicalScoreSummary?.title || previewResult.originalFilename || 'Uploaded score'}
+                          </h4>
+                          <p className="score-preview__surface-meta">
+                            {previewResult.rendererFormat || 'preview'}{previewResult.pageCount ? ` · ${previewResult.pageCount} page(s)` : ''}
+                          </p>
+                          {previewResult.availability === 'ready' && previewResult.previewAccess ? (
+                            <ScoreViewer
+                              previewAccess={previewResult.previewAccess}
+                              title={previewResult.canonicalScoreSummary?.title || previewResult.originalFilename || 'Uploaded score'}
+                            />
+                          ) : null}
+                          {previewResult.canonicalScoreSummary ? (
+                            <dl className="score-preview__facts">
+                              <div>
+                                <dt>Parts</dt>
+                                <dd>{previewResult.canonicalScoreSummary.partCount}</dd>
+                              </div>
+                              <div>
+                                <dt>Measures</dt>
+                                <dd>{previewResult.canonicalScoreSummary.measureCount}</dd>
+                              </div>
+                              <div>
+                                <dt>Notes</dt>
+                                <dd>{previewResult.canonicalScoreSummary.noteCount}</dd>
+                              </div>
+                              <div>
+                                <dt>Rests</dt>
+                                <dd>{previewResult.canonicalScoreSummary.restCount}</dd>
+                              </div>
+                            </dl>
+                          ) : null}
+                          {previewResult.canonicalScoreSummary?.parts?.length ? (
+                            <ul className="score-preview__parts" aria-label="Preview parts">
+                              {previewResult.canonicalScoreSummary.parts.map((part) => (
+                                <li key={part.partId}>{part.name || part.partId}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          {previewResult.failureCode ? (
+                            <p className="score-preview__failure">Failure type: {previewResult.failureCode}</p>
+                          ) : null}
+                        </div>
+                        <p className="score-preview__note">
+                          Preview stays read-only. Result comparison becomes available after a later result artifact exists.
+                        </p>
+                      </>
+                    ) : (
+                      <div className="score-preview__state">
+                        <p className="score-preview__summary">No preview is available yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </section>
               ) : null}
               {uploadResult?.acceptedStatus === 'parsed' ? (
                 <div className="new-case-actions new-case-actions--inline">

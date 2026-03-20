@@ -38,11 +38,16 @@ class CaseService:
 
     @staticmethod
     def build_case_detail(case: TranspositionCase) -> CaseDetail:
+        latest_score = None
+        if case.scores:
+            latest_score = max(case.scores, key=lambda score: score.created_at)
+
         return CaseDetail(
             id=case.id,
             status=case.status,
             instrumentIdentity=case.instrument_identity,
             scoreCount=case.score_count,
+            latestScoreDocumentId=latest_score.id if latest_score is not None else None,
             createdAt=case.created_at,
             updatedAt=case.updated_at,
             constraints=CaseConstraints(

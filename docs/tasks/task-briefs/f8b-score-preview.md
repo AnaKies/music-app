@@ -115,17 +115,18 @@ Context:
 The user should be able to confirm which score was uploaded before trusting later recommendation or transformation steps.
 
 Deliverable:
-A read-only source-preview view driven by backend preview metadata.
+A read-only source-preview view driven by backend preview metadata that renders the uploaded MusicXML as visual musical notation.
 
 Dependencies:
 Backend-25a and Frontend-17a.
 
 Acceptance criteria:
 
-- uploaded score can be viewed when available
+- uploaded score can be viewed as read-only notation when available
 - preview failure is shown calmly and safely
 - no raw internal artifact details are exposed
 - allowed interactions are limited to viewport navigation such as scroll, page movement, and optional zoom
+- the preview is not limited to a metadata card or raw XML node display
 
 Out of scope:
 Result comparison.
@@ -142,7 +143,7 @@ Context:
 The user should be able to inspect the transformed result before or alongside download.
 
 Deliverable:
-A read-only result-preview view driven by backend preview metadata.
+A read-only result-preview view driven by backend preview metadata that renders the transformed MusicXML as visual musical notation.
 
 Dependencies:
 Backend-25b and Frontend-17a.

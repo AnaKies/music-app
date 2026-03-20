@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from backend.api.schemas.scores import ParseFailureType, ScoreFormat, ScoreProcessingStatus
@@ -22,6 +22,7 @@ class ScoreDocument(Base):
     )
     parse_failure_type = Column(Enum(ParseFailureType), nullable=True)
     storage_uri = Column(String, nullable=False)
+    source_musicxml = Column(Text, nullable=True)
     content_size = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
