@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
+from io import BytesIO
 from pathlib import Path
+from zipfile import BadZipFile, ZipFile
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -18,7 +20,7 @@ from backend.domain.scores.models import CanonicalScore, ScoreDocument
 from backend.services.scores.parser import parse_musicxml
 
 MAX_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024
-ALLOWED_SUFFIXES = {".musicxml", ".xml"}
+ALLOWED_SUFFIXES = {".musicxml", ".xml", ".mxl"}
 MUSICXML_MARKERS = ("<score-partwise", "<score-timewise")
 
 
@@ -45,7 +47,7 @@ def accept_score_upload(
     if suffix not in ALLOWED_SUFFIXES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only MusicXML uploads are supported.",
+            detail="Only MusicXML-family uploads (.musicxml, .xml, .mxl) are supported.",
         )
 
     content = upload.file.read()
@@ -56,12 +58,7 @@ def accept_score_upload(
             detail="The uploaded file exceeds the maximum allowed size.",
         )
 
-    decoded = content.decode("utf-8", errors="ignore")
-    if not any(marker in decoded for marker in MUSICXML_MARKERS):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="The uploaded file is not valid MusicXML.",
-        )
+    xml_payload = _extract_musicxml_payload(content=content, suffix=suffix)
 
     score_document = ScoreDocument(
         transposition_case_id=transposition_case_id,
@@ -75,7 +72,7 @@ def accept_score_upload(
     db.commit()
     db.refresh(score_document)
 
-    parse_result = parse_musicxml(content)
+    parse_result = parse_musicxml(xml_payload)
     canonical_summary = None
     parse_failure_type = None
 
@@ -134,3 +131,57 @@ def accept_score_upload(
             canonicalScoreSummary=canonical_summary,
         ),
     )
+
+
+def _extract_musicxml_payload(content: bytes, suffix: str) -> bytes:
+    if suffix in {".musicxml", ".xml"}:
+        decoded = content.decode("utf-8", errors="ignore")
+        if not any(marker in decoded for marker in MUSICXML_MARKERS):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="The uploaded file is not valid MusicXML.",
+            )
+        return content
+
+    if suffix == ".mxl":
+        return _extract_mxl_rootfile(content)
+
+    raise HTTPException(
+        status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+        detail="Only MusicXML-family uploads (.musicxml, .xml, .mxl) are supported.",
+    )
+
+
+def _extract_mxl_rootfile(content: bytes) -> bytes:
+    try:
+        with ZipFile(BytesIO(content)) as archive:
+            candidate_names = [
+                name for name in archive.namelist()
+                if not name.endswith("/") and not name.startswith("META-INF/")
+            ]
+            preferred_name = next(
+                (name for name in candidate_names if Path(name).suffix.lower() in {".musicxml", ".xml"}),
+                None,
+            )
+            selected_name = preferred_name or (candidate_names[0] if candidate_names else None)
+            if selected_name is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="The uploaded file is not valid MusicXML.",
+                )
+
+            xml_payload = archive.read(selected_name)
+    except BadZipFile:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The uploaded file is not valid MusicXML.",
+        ) from None
+
+    decoded = xml_payload.decode("utf-8", errors="ignore")
+    if not any(marker in decoded for marker in MUSICXML_MARKERS):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The uploaded file is not valid MusicXML.",
+        )
+
+    return xml_payload

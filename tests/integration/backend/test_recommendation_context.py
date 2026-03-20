@@ -146,3 +146,87 @@ def test_post_recommendation_context_handles_missing_inferred_constraints():
         transaction.rollback()
         session.close()
         connection.close()
+
+
+def test_post_recommendation_context_handles_missing_instrument_knowledge_safely():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_with_score(session)
+    case = session.query(TranspositionCase).filter(TranspositionCase.id == "case-1").first()
+    assert case is not None
+    case.instrument_identity = "bassoon-unknown"
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/recommendations/context",
+                json={"transpositionCaseId": "case-1", "scoreDocumentId": "score-1"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["instrumentKnowledge"] == {
+            "instrumentIdentity": "bassoon-unknown",
+            "displayName": "bassoon-unknown",
+            "transposition": "unknown",
+            "writtenRangeMin": "unknown",
+            "writtenRangeMax": "unknown",
+            "preferredClefs": [],
+            "keySuitabilityNotes": ["No curated instrument knowledge is available yet."],
+        }
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_post_recommendation_context_keeps_confirmed_and_inferred_constraints_separate():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_with_score(session)
+    session.add(
+        InterviewSession(
+            case_id="case-1",
+            status="completed",
+            current_question_id=None,
+            answers=[
+                {
+                    "questionId": "additional_context",
+                    "questionType": "note_text",
+                    "value": {"text": "not sure about taking the top register higher"},
+                    "lowConfidenceFlag": True,
+                    "answeredAt": "2026-03-19T10:00:00Z",
+                }
+            ],
+            low_confidence={"reason": "User uncertainty triggered follow-up handling."},
+        )
+    )
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/recommendations/context",
+                json={"transpositionCaseId": "case-1", "scoreDocumentId": "score-1"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["confirmedConstraints"]["comfortRangeMin"] == "G3"
+        assert payload["confirmedConstraints"]["comfortRangeMax"] == "D5"
+        assert payload["inferredConstraints"]["advisoryNotes"][0] == "not sure about taking the top register higher"
+        assert "not sure" not in (payload["confirmedConstraints"]["comfortRangeMin"] or "")
+        assert "not sure" not in (payload["confirmedConstraints"]["comfortRangeMax"] or "")
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()

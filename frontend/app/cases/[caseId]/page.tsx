@@ -187,7 +187,7 @@ export default function CaseDetailPage() {
                 <input
                   className="interview-field__input"
                   type="file"
-                  accept=".musicxml,.xml,text/xml,application/xml"
+                  accept=".musicxml,.xml,.mxl,text/xml,application/xml,application/vnd.recordare.musicxml"
                   onChange={(event: ChangeEvent<HTMLInputElement>) =>
                     setSelectedFile(event.target.files?.[0] ?? null)
                   }

@@ -179,7 +179,7 @@ Upload an original score document.
 
 Contract shape:
 
-- input: multipart upload with MusicXML file and associated `transpositionCaseId`
+- input: multipart upload with MusicXML-family file (`.musicxml`, `.xml`, or compressed `.mxl`) and associated `transpositionCaseId`
 - output: `scoreDocumentId`, format, accepted status, initial processing snapshot
 
 Failure behavior:
@@ -269,7 +269,7 @@ Ownership:
 Backend API with AI recommendation service
 
 Evolution:
-The recommendation payload may grow with confidence, rationale, and difficulty metadata.
+The recommendation payload may grow with confidence, rationale, and difficulty metadata, but normal payload fields must remain presentation-safe and must not expose raw provider text.
 
 Runtime note:
 Recommendation generation may be fulfilled through an asynchronous worker path as long as status visibility and result traceability remain consistent with the documented job model and the score-status read contract.

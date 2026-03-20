@@ -1,4 +1,5 @@
 from io import BytesIO
+from zipfile import ZipFile
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -148,8 +149,103 @@ def test_post_scores_rejects_unsupported_file_type():
 
       assert response.status_code == 415
       assert response.json() == {
-          "detail": "Only MusicXML uploads are supported.",
+          "detail": "Only MusicXML-family uploads (.musicxml, .xml, .mxl) are supported.",
       }
+    finally:
+      app.dependency_overrides.clear()
+      transaction.rollback()
+      session.close()
+      connection.close()
+
+
+def test_post_scores_accepts_valid_xml_upload_for_ready_case():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-ready", "ready_for_upload")
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+      with TestClient(app) as client:
+        response = client.post(
+            "/scores",
+            data={"transpositionCaseId": "case-ready"},
+            files={
+                "file": (
+                    "example.xml",
+                    BytesIO(
+                        b"""<?xml version='1.0' encoding='UTF-8'?>
+                        <score-partwise version='4.0'>
+                          <part-list>
+                            <score-part id='P1'><part-name>Flute</part-name></score-part>
+                          </part-list>
+                          <part id='P1'>
+                            <measure number='1'>
+                              <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>
+                            </measure>
+                          </part>
+                        </score-partwise>
+                        """
+                    ),
+                    "application/xml",
+                )
+            },
+        )
+
+      assert response.status_code == 202
+      assert response.json()["acceptedStatus"] == "parsed"
+    finally:
+      app.dependency_overrides.clear()
+      transaction.rollback()
+      session.close()
+      connection.close()
+
+
+def test_post_scores_accepts_valid_mxl_upload_for_ready_case():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-ready", "ready_for_upload")
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    archive_bytes = BytesIO()
+    with ZipFile(archive_bytes, "w") as archive:
+        archive.writestr(
+            "score.musicxml",
+            """<?xml version='1.0' encoding='UTF-8'?>
+            <score-partwise version='4.0'>
+              <part-list>
+                <score-part id='P1'><part-name>Flute</part-name></score-part>
+              </part-list>
+              <part id='P1'>
+                <measure number='1'>
+                  <note><rest/><duration>4</duration></note>
+                </measure>
+              </part>
+            </score-partwise>
+            """,
+        )
+
+    try:
+      with TestClient(app) as client:
+        response = client.post(
+            "/scores",
+            data={"transpositionCaseId": "case-ready"},
+            files={
+                "file": (
+                    "example.mxl",
+                    BytesIO(archive_bytes.getvalue()),
+                    "application/vnd.recordare.musicxml",
+                )
+            },
+        )
+
+      assert response.status_code == 202
+      payload = response.json()
+      assert payload["acceptedStatus"] == "parsed"
+      assert payload["initialProcessingSnapshot"]["processingStatus"] == "parsed"
     finally:
       app.dependency_overrides.clear()
       transaction.rollback()

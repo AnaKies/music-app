@@ -106,6 +106,7 @@ Responsibilities:
 - enforce malformed-input rejection at the boundary where practical
 - normalize user-facing failure and status data into presentation-safe forms
 - keep raw diagnostics and internal implementation detail out of normal frontend contracts
+- accept MusicXML-family uploads (`.musicxml`, `.xml`, `.mxl`) before parser execution
 
 ### AI Interview Service
 

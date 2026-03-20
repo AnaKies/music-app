@@ -4,6 +4,7 @@ from typing import Optional
 
 from backend.database import Base, engine, get_db
 from backend.domain.cases.models import TranspositionCase
+from backend.domain.interviews.models import InterviewSession
 from backend.domain.recommendations.models import RangeRecommendation
 from backend.domain.scores.models import CanonicalScore, ScoreDocument
 from backend.main import app
@@ -117,6 +118,79 @@ def test_post_recommendations_returns_blocked_failure_for_incomplete_context():
             "code": "insufficient_context",
             "safeSummary": "The recommendation path is blocked because the case or score context is incomplete.",
         }
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_post_recommendations_marks_low_confidence_when_advisory_inference_exists():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_score(session)
+    session.add(
+        InterviewSession(
+            case_id="case-1",
+            status="completed",
+            current_question_id=None,
+            answers=[
+                {
+                    "questionId": "additional_context",
+                    "questionType": "note_text",
+                    "value": {"text": "not sure about endurance in the upper register"},
+                    "lowConfidenceFlag": True,
+                    "answeredAt": "2026-03-19T10:00:00Z",
+                }
+            ],
+            low_confidence={"reason": "User uncertainty triggered follow-up handling."},
+        )
+    )
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/recommendations",
+                json={"transpositionCaseId": "case-1", "scoreDocumentId": "score-1"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "ready"
+        assert payload["recommendations"][0]["confidence"] == "low"
+        assert payload["recommendations"][0]["warnings"][0]["code"] == "advisory_inference_present"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_post_recommendations_keeps_payload_presentation_safe():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_score(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/recommendations",
+                json={"transpositionCaseId": "case-1", "scoreDocumentId": "score-1"},
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        serialized = str(payload).lower()
+        assert "provider" not in serialized
+        assert "llm" not in serialized
+        assert "model said" not in serialized
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()
