@@ -15,6 +15,7 @@ from backend.api.schemas.recommendations import (
 )
 from backend.domain.recommendations.models import RangeRecommendation
 from backend.services.recommendations.context import build_recommendation_context
+from backend.services.shared.note_ranges import normalize_note_bounds
 
 
 def generate_recommendations(
@@ -52,8 +53,14 @@ def generate_recommendations(
         recommendationId=str(uuid.uuid4()),
         label="Primary recommendation",
         targetRange=RecommendationTargetRange(
-            min=context.confirmedConstraints.comfortRangeMin,
-            max=context.confirmedConstraints.comfortRangeMax,
+            min=_normalized_target_range(
+                context.confirmedConstraints.comfortRangeMin,
+                context.confirmedConstraints.comfortRangeMax,
+            )[0],
+            max=_normalized_target_range(
+                context.confirmedConstraints.comfortRangeMin,
+                context.confirmedConstraints.comfortRangeMax,
+            )[1],
         ),
         recommendedKey=_recommended_key(context),
         confidence=primary_confidence,
@@ -170,3 +177,10 @@ def _persist_recommendations(
         )
 
     db.commit()
+
+
+def _normalized_target_range(range_min: str, range_max: str) -> tuple[str, str]:
+    try:
+        return normalize_note_bounds(range_min, range_max)
+    except ValueError:
+        return range_min, range_max

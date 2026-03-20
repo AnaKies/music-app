@@ -15,11 +15,13 @@ from backend.api.schemas.scores import (
     ScoreFormat,
     ScorePreviewAvailability,
     ScorePreviewResponse,
+    ScoreReadResponse,
     ScoreProcessingSnapshot,
     ScoreProcessingStatus,
     ScoreUploadResponse,
 )
 from backend.domain.cases.models import TranspositionCase
+from backend.domain.recommendations.models import RangeRecommendation
 from backend.domain.scores.models import CanonicalScore, ScoreDocument
 from backend.services.scores.parser import parse_musicxml
 
@@ -58,7 +60,7 @@ def accept_score_upload(
     content_size = len(content)
     if content_size > MAX_UPLOAD_SIZE_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="The uploaded file exceeds the maximum allowed size.",
         )
 
@@ -149,6 +151,41 @@ def get_source_score_preview(
             detail=f"Score with id {score_document_id} not found.",
         )
 
+    return _build_source_score_preview(score_document)
+
+
+def get_score_read(
+    db: Session,
+    score_document_id: str,
+) -> ScoreReadResponse:
+    score_document = db.query(ScoreDocument).filter(ScoreDocument.id == score_document_id).first()
+    if score_document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Score with id {score_document_id} not found.",
+        )
+
+    source_preview = _build_source_score_preview(score_document)
+    recommendations_exist = (
+        db.query(RangeRecommendation.id)
+        .filter(RangeRecommendation.score_document_id == score_document.id)
+        .first()
+        is not None
+    )
+    processing_status = _derive_read_processing_status(score_document, recommendations_exist)
+
+    return ScoreReadResponse(
+        scoreDocumentId=score_document.id,
+        transpositionCaseId=score_document.transposition_case_id,
+        processingStatus=processing_status,
+        originalFilename=score_document.original_filename,
+        safeSummary=_build_score_safe_summary(processing_status),
+        sourcePreview=source_preview,
+        resultPreview=_build_result_score_preview(score_document),
+    )
+
+
+def _build_source_score_preview(score_document: ScoreDocument) -> ScorePreviewResponse:
     canonical_summary = _build_canonical_summary(score_document)
     revision_token = _build_revision_token(score_document)
 
@@ -206,6 +243,17 @@ def get_source_score_preview(
     )
 
 
+def _build_result_score_preview(score_document: ScoreDocument) -> ScorePreviewResponse:
+    return ScorePreviewResponse(
+        scoreDocumentId=score_document.id,
+        artifactRole=ScoreArtifactRole.RESULT,
+        availability=ScorePreviewAvailability.UNAVAILABLE,
+        revisionToken=_build_revision_token(score_document),
+        safeSummary="A result preview is not available yet because no transformed result artifact exists.",
+        originalFilename=score_document.original_filename,
+    )
+
+
 def _build_canonical_summary(score_document: ScoreDocument) -> Optional[CanonicalScoreSummary]:
     if score_document.canonical_score is None:
         return None
@@ -235,12 +283,20 @@ def _build_revision_token(score_document: ScoreDocument) -> str:
 def get_source_score_preview_content(
     db: Session,
     score_document_id: str,
+    revision: str,
 ) -> Response:
     score_document = db.query(ScoreDocument).filter(ScoreDocument.id == score_document_id).first()
     if score_document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Score with id {score_document_id} not found.",
+        )
+
+    expected_revision = _build_revision_token(score_document)
+    if revision != expected_revision:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The requested score preview revision is stale.",
         )
 
     if score_document.processing_status != ScoreProcessingStatus.PARSED or not score_document.source_musicxml:
@@ -292,6 +348,13 @@ def _extract_mxl_rootfile(content: bytes) -> bytes:
                     detail="The uploaded file is not valid MusicXML.",
                 )
 
+            selected_info = archive.getinfo(selected_name)
+            if selected_info.file_size > MAX_UPLOAD_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    detail="The uploaded file exceeds the maximum allowed size after extraction.",
+                )
+
             xml_payload = archive.read(selected_name)
     except BadZipFile:
         raise HTTPException(
@@ -307,3 +370,37 @@ def _extract_mxl_rootfile(content: bytes) -> bytes:
         )
 
     return xml_payload
+
+
+def _derive_read_processing_status(
+    score_document: ScoreDocument,
+    recommendations_exist: bool,
+) -> ScoreProcessingStatus:
+    if score_document.processing_status == ScoreProcessingStatus.PARSE_FAILED:
+        return ScoreProcessingStatus.FAILED
+
+    if score_document.processing_status == ScoreProcessingStatus.PARSED:
+        if recommendations_exist:
+            return ScoreProcessingStatus.RECOMMENDATION_READY
+        return ScoreProcessingStatus.RECOMMENDATION_PENDING
+
+    if score_document.processing_status == ScoreProcessingStatus.UPLOADED:
+        return ScoreProcessingStatus.UPLOADED
+
+    return score_document.processing_status
+
+
+def _build_score_safe_summary(processing_status: ScoreProcessingStatus) -> str:
+    if processing_status == ScoreProcessingStatus.RECOMMENDATION_READY:
+        return "The score is parsed and recommendations are ready for review."
+
+    if processing_status == ScoreProcessingStatus.RECOMMENDATION_PENDING:
+        return "The score is parsed and ready for recommendation generation."
+
+    if processing_status == ScoreProcessingStatus.FAILED:
+        return "The score flow failed before a recommendation-ready state was reached."
+
+    if processing_status == ScoreProcessingStatus.UPLOADED:
+        return "The uploaded score has been accepted and is waiting for further processing."
+
+    return "The current score status is available."

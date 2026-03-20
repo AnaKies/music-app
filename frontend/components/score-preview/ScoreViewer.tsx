@@ -10,15 +10,11 @@ interface ScoreViewerProps {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 function resolvePreviewUrl(previewAccess: string): string {
-  if (/^https?:\/\//i.test(previewAccess)) {
-    return previewAccess;
-  }
-
   if (previewAccess.startsWith('/')) {
     return `${API_BASE_URL}${previewAccess}`;
   }
 
-  return `${API_BASE_URL}/${previewAccess}`;
+  throw new Error('preview_access_invalid');
 }
 
 export function ScoreViewer({ previewAccess, title }: ScoreViewerProps) {

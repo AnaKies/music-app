@@ -1,5 +1,5 @@
 from io import BytesIO
-from zipfile import ZipFile
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -211,7 +211,7 @@ def test_post_scores_accepts_valid_mxl_upload_for_ready_case():
     app.dependency_overrides[get_db] = _override_get_db(session)
 
     archive_bytes = BytesIO()
-    with ZipFile(archive_bytes, "w") as archive:
+    with ZipFile(archive_bytes, "w", compression=ZIP_DEFLATED) as archive:
         archive.writestr(
             "score.musicxml",
             """<?xml version='1.0' encoding='UTF-8'?>
@@ -246,6 +246,46 @@ def test_post_scores_accepts_valid_mxl_upload_for_ready_case():
       payload = response.json()
       assert payload["acceptedStatus"] == "parsed"
       assert payload["initialProcessingSnapshot"]["processingStatus"] == "parsed"
+    finally:
+      app.dependency_overrides.clear()
+      transaction.rollback()
+      session.close()
+      connection.close()
+
+
+def test_post_scores_rejects_mxl_with_oversized_extracted_musicxml():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-ready", "ready_for_upload")
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    archive_bytes = BytesIO()
+    with ZipFile(archive_bytes, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr(
+            "score.musicxml",
+            "<score-partwise version='4.0'>" + ("a" * (5 * 1024 * 1024 + 1)) + "</score-partwise>",
+        )
+
+    try:
+      with TestClient(app) as client:
+        response = client.post(
+            "/scores",
+            data={"transpositionCaseId": "case-ready"},
+            files={
+                "file": (
+                    "oversized.mxl",
+                    BytesIO(archive_bytes.getvalue()),
+                    "application/vnd.recordare.musicxml",
+                )
+            },
+        )
+
+      assert response.status_code == 413
+      assert response.json() == {
+          "detail": "The uploaded file exceeds the maximum allowed size after extraction.",
+      }
     finally:
       app.dependency_overrides.clear()
       transaction.rollback()

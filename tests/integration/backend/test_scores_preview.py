@@ -2,9 +2,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from backend.api.schemas.cases import CaseStatus
+from backend.api.schemas.recommendations import RecommendationConfidence
 from backend.api.schemas.scores import ParseFailureType, ScoreFormat, ScoreProcessingStatus
 from backend.database import Base, engine, get_db
 from backend.domain.cases.models import TranspositionCase
+from backend.domain.recommendations.models import RangeRecommendation
 from backend.domain.scores.models import CanonicalScore, ScoreDocument
 from backend.main import app
 
@@ -122,7 +124,45 @@ def test_get_scores_preview_content_returns_musicxml_document():
 
     try:
         with TestClient(app) as client:
-            response = client.get("/scores/score-preview-content/preview/content")
+            response = client.get(
+                "/scores/score-preview-content/preview/content?revision=2026-03-20T10:00:00+00:00"
+            )
+
+        assert response.status_code == 409
+        assert response.json() == {
+            "detail": "The requested score preview revision is stale.",
+        }
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_get_scores_preview_content_returns_musicxml_document_for_matching_revision():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-preview-content")
+    score_document = ScoreDocument(
+        id="score-preview-content",
+        transposition_case_id="case-preview-content",
+        original_filename="example.musicxml",
+        format=ScoreFormat.MUSICXML,
+        processing_status=ScoreProcessingStatus.PARSED,
+        storage_uri="local://scores/case-preview-content/example.musicxml",
+        source_musicxml="<score-partwise version='4.0'></score-partwise>",
+        content_size=64,
+    )
+    session.add(score_document)
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        revision = score_document.created_at.isoformat()
+        with TestClient(app) as client:
+            response = client.get(f"/scores/score-preview-content/preview/content?revision={revision}")
 
         assert response.status_code == 200
         assert response.headers["content-type"].startswith("application/vnd.recordare.musicxml+xml")
@@ -215,6 +255,115 @@ def test_get_scores_preview_returns_failed_state_for_parse_failure():
         assert payload["failureSeverity"] == "warning"
         assert payload["previewAccess"] is None
         assert "local://" not in str(payload)
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_get_score_read_returns_preview_models_and_recommendation_pending_state():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-read")
+    score_document = ScoreDocument(
+        id="score-read-pending",
+        transposition_case_id="case-read",
+        original_filename="example.musicxml",
+        format=ScoreFormat.MUSICXML,
+        processing_status=ScoreProcessingStatus.PARSED,
+        storage_uri="local://scores/case-read/example.musicxml",
+        source_musicxml="<score-partwise version='4.0'></score-partwise>",
+        content_size=512,
+    )
+    session.add(score_document)
+    session.flush()
+    session.add(
+        CanonicalScore(
+            score_document_id=score_document.id,
+            schema_version="v1",
+            title="Etude in C",
+            parts=[{"id": "P1", "name": "Flute"}],
+            measure_count=12,
+            note_count=48,
+            rest_count=4,
+        )
+    )
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/scores/score-read-pending")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["processingStatus"] == "recommendation_pending"
+        assert payload["sourcePreview"]["availability"] == "ready"
+        assert payload["resultPreview"]["availability"] == "unavailable"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_get_score_read_returns_recommendation_ready_when_recommendations_exist():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session, "case-read-ready")
+    score_document = ScoreDocument(
+        id="score-read-ready",
+        transposition_case_id="case-read-ready",
+        original_filename="example.musicxml",
+        format=ScoreFormat.MUSICXML,
+        processing_status=ScoreProcessingStatus.PARSED,
+        storage_uri="local://scores/case-read-ready/example.musicxml",
+        source_musicxml="<score-partwise version='4.0'></score-partwise>",
+        content_size=512,
+    )
+    session.add(score_document)
+    session.flush()
+    session.add(
+        CanonicalScore(
+            score_document_id=score_document.id,
+            schema_version="v1",
+            title="Etude in C",
+            parts=[{"id": "P1", "name": "Flute"}],
+            measure_count=12,
+            note_count=48,
+            rest_count=4,
+        )
+    )
+    session.add(
+        RangeRecommendation(
+            id="rec-1",
+            transposition_case_id="case-read-ready",
+            score_document_id=score_document.id,
+            label="Primary recommendation",
+            target_range_min="G3",
+            target_range_max="D5",
+            recommended_key="concert_c",
+            confidence=RecommendationConfidence.MEDIUM,
+            summary_reason="Matches the confirmed player comfort range.",
+            warnings=[],
+            is_primary=True,
+        )
+    )
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/scores/score-read-ready")
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["processingStatus"] == "recommendation_ready"
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()

@@ -9,9 +9,11 @@ import { ScoreViewer } from '@/components/score-preview/ScoreViewer';
 import { ApiError, casesApi } from '@/shared/api/cases';
 import { recommendationsApi } from '@/shared/api/recommendations';
 import { scoresApi } from '@/shared/api/scores';
+import { transformationsApi } from '@/shared/api/transformations';
 import type { CaseDetail } from '@/shared/types/cases';
 import type { RecommendationItem, RecommendationResponse } from '@/shared/types/recommendations';
-import type { ScorePreviewResponse, ScoreUploadResponse } from '@/shared/types/scores';
+import type { ScorePreviewResponse, ScoreReadResponse, ScoreUploadResponse } from '@/shared/types/scores';
+import type { TransformationResponse } from '@/shared/types/transformations';
 
 export default function CaseDetailPage() {
   const params = useParams<{ caseId: string }>();
@@ -23,11 +25,14 @@ export default function CaseDetailPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<ScoreUploadResponse | null>(null);
-  const [previewResult, setPreviewResult] = useState<ScorePreviewResponse | null>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [scoreResult, setScoreResult] = useState<ScoreReadResponse | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [isLoadingScore, setIsLoadingScore] = useState(false);
   const [recommendationResult, setRecommendationResult] = useState<RecommendationResponse | null>(null);
   const [isGeneratingRecommendations, setIsGeneratingRecommendations] = useState(false);
   const [selectedRecommendationId, setSelectedRecommendationId] = useState<string | null>(null);
+  const [transformationResult, setTransformationResult] = useState<TransformationResponse | null>(null);
+  const [isTransforming, setIsTransforming] = useState(false);
   const [activePreviewMode, setActivePreviewMode] = useState<'original' | 'result'>('original');
 
   useEffect(() => {
@@ -73,18 +78,20 @@ export default function CaseDetailPage() {
   }, [caseId]);
 
   const activeScoreDocumentId = uploadResult?.scoreDocumentId ?? caseDetail?.latestScoreDocumentId ?? null;
+  const previewResult: ScorePreviewResponse | null = scoreResult?.sourcePreview ?? null;
   const isNotationPreviewReady = previewResult?.availability === 'ready';
 
   useEffect(() => {
     let isMounted = true;
 
-    async function loadPreview(scoreDocumentId: string) {
+    async function loadScore(scoreDocumentId: string) {
       try {
-        setIsLoadingPreview(true);
-        const response = await scoresApi.getScorePreview(scoreDocumentId);
+        setIsLoadingScore(true);
+        setPreviewError(null);
+        const response = await scoresApi.getScore(scoreDocumentId);
 
         if (isMounted) {
-          setPreviewResult(response);
+          setScoreResult(response);
         }
       } catch (caughtError) {
         if (!isMounted) {
@@ -92,23 +99,24 @@ export default function CaseDetailPage() {
         }
 
         if (caughtError instanceof ApiError) {
-          setError(caughtError.message);
+          setPreviewError(caughtError.message);
         } else {
-          setError('Could not load the score preview. Please try again.');
+          setPreviewError('Could not load the score preview. Please try again.');
         }
       } finally {
         if (isMounted) {
-          setIsLoadingPreview(false);
+          setIsLoadingScore(false);
         }
       }
     }
 
     if (!activeScoreDocumentId) {
-      setPreviewResult(null);
+      setScoreResult(null);
+      setPreviewError(null);
       return;
     }
 
-    void loadPreview(activeScoreDocumentId);
+    void loadScore(activeScoreDocumentId);
 
     return () => {
       isMounted = false;
@@ -126,9 +134,11 @@ export default function CaseDetailPage() {
       setUploadResult(await scoresApi.uploadScore(caseDetail.id, selectedFile));
       const refreshedCase = await casesApi.getCase(caseDetail.id);
       setCaseDetail(refreshedCase);
-      setPreviewResult(null);
+      setScoreResult(null);
+      setPreviewError(null);
       setRecommendationResult(null);
       setSelectedRecommendationId(null);
+      setTransformationResult(null);
       setSelectedFile(null);
       setActivePreviewMode('original');
     } catch (caughtError) {
@@ -143,16 +153,17 @@ export default function CaseDetailPage() {
   }
 
   async function handleGenerateRecommendations() {
-    if (!caseDetail || !uploadResult) {
+    if (!caseDetail || !activeScoreDocumentId) {
       return;
     }
 
     try {
       setIsGeneratingRecommendations(true);
       setError(null);
-      const result = await recommendationsApi.generateRecommendations(caseDetail.id, uploadResult.scoreDocumentId);
+      const result = await recommendationsApi.generateRecommendations(caseDetail.id, activeScoreDocumentId);
       setRecommendationResult(result);
       setSelectedRecommendationId(null);
+      setTransformationResult(null);
     } catch (caughtError) {
       if (caughtError instanceof ApiError) {
         setError(caughtError.message);
@@ -166,6 +177,32 @@ export default function CaseDetailPage() {
 
   function handleSelectRecommendation(item: RecommendationItem) {
     setSelectedRecommendationId(item.recommendationId);
+    setTransformationResult(null);
+  }
+
+  async function handleRunTransformation() {
+    if (!caseDetail || !activeScoreDocumentId || !selectedRecommendationId) {
+      return;
+    }
+
+    try {
+      setIsTransforming(true);
+      setError(null);
+      const result = await transformationsApi.runTransformation(
+        caseDetail.id,
+        activeScoreDocumentId,
+        selectedRecommendationId
+      );
+      setTransformationResult(result);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError) {
+        setError(caughtError.message);
+      } else {
+        setError('Could not run the deterministic transformation. Please try again.');
+      }
+    } finally {
+      setIsTransforming(false);
+    }
   }
 
   return (
@@ -173,9 +210,7 @@ export default function CaseDetailPage() {
       <header className="new-case-hero">
         <p className="new-case-hero__eyebrow">F1 · Existing Case</p>
         <h1 className="new-case-hero__title">Continue an existing case.</h1>
-        <p className="new-case-hero__description">
-          This screen confirms that an existing case can be reopened from the case entry page without hitting a 404.
-        </p>
+        <p className="new-case-hero__description">Review the current case, upload a score, and continue the transposition flow.</p>
       </header>
 
       {isLoading ? (
@@ -352,9 +387,49 @@ export default function CaseDetailPage() {
                     ))}
                   </div>
                   {selectedRecommendationId ? (
-                    <p className="recommendation-workspace__selection">
-                      A recommendation is selected for the next transformation step. No automatic transformation has started.
-                    </p>
+                    <>
+                      <p className="recommendation-workspace__selection">
+                        A recommendation is selected for the next transformation step. No automatic transformation has started.
+                      </p>
+                      <div className="new-case-actions new-case-actions--inline">
+                        <button
+                          type="button"
+                          className="new-case-actions__button new-case-actions__button--primary"
+                          disabled={isTransforming}
+                          onClick={() => void handleRunTransformation()}
+                        >
+                          <span>{isTransforming ? 'Transforming...' : 'Run Transformation'}</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                  {transformationResult ? (
+                    <div className="interview-follow-up">
+                      <div>
+                        <p className="interview-follow-up__title">Deterministic transformation</p>
+                        <p className="interview-follow-up__text">{transformationResult.safeSummary}</p>
+                        <p className="interview-follow-up__text">
+                          Applied range: {transformationResult.selectedRangeMin} to {transformationResult.selectedRangeMax}
+                        </p>
+                        {transformationResult.semitoneShift !== null && transformationResult.semitoneShift !== undefined ? (
+                          <p className="interview-follow-up__text">
+                            Semitone shift: {transformationResult.semitoneShift}
+                          </p>
+                        ) : null}
+                        {transformationResult.warnings.length ? (
+                          <ul className="recommendation-card__warnings">
+                            {transformationResult.warnings.map((warning) => (
+                              <li
+                                key={`${transformationResult.transformationJobId}-${warning.code}`}
+                                className={`recommendation-card__warning recommendation-card__warning--${warning.severity}`}
+                              >
+                                {warning.message}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    </div>
                   ) : null}
                 </section>
               ) : null}
@@ -387,10 +462,14 @@ export default function CaseDetailPage() {
                     </div>
                   </div>
                   <div className="score-preview__panel" aria-live="polite">
-                    {isLoadingPreview ? (
+                    {isLoadingScore ? (
                       <div className="score-preview__state">
                         <Loader2 className="case-entry-loader" />
                         <p className="score-preview__summary">Loading the read-only preview.</p>
+                      </div>
+                    ) : previewError ? (
+                      <div className="score-preview__state">
+                        <p className="score-preview__summary">{previewError}</p>
                       </div>
                     ) : previewResult ? (
                       <>

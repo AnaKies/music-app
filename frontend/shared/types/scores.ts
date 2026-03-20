@@ -1,5 +1,15 @@
 export type ScoreFormat = 'musicxml';
-export type ScoreProcessingStatus = 'uploaded' | 'parsed' | 'parse_failed';
+export type ScoreProcessingStatus =
+  | 'uploaded'
+  | 'queued'
+  | 'parsing'
+  | 'parsed'
+  | 'recommendation_pending'
+  | 'recommendation_ready'
+  | 'transforming'
+  | 'completed'
+  | 'failed'
+  | 'parse_failed';
 export type ParseFailureType = 'invalid_xml' | 'unsupported_structure' | 'empty_score';
 export type ScorePreviewAvailability = 'ready' | 'not_ready' | 'unavailable' | 'failed';
 export type ScoreArtifactRole = 'source' | 'result';
@@ -49,4 +59,14 @@ export interface ScorePreviewResponse {
   previewAccess?: string | null;
   originalFilename?: string | null;
   canonicalScoreSummary?: CanonicalScoreSummary | null;
+}
+
+export interface ScoreReadResponse {
+  scoreDocumentId: string;
+  transpositionCaseId: string;
+  processingStatus: ScoreProcessingStatus;
+  originalFilename: string;
+  safeSummary: string;
+  sourcePreview?: ScorePreviewResponse | null;
+  resultPreview?: ScorePreviewResponse | null;
 }

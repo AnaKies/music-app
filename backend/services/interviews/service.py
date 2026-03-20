@@ -20,6 +20,7 @@ from backend.api.schemas.interviews import (
 )
 from backend.domain.cases.models import TranspositionCase
 from backend.domain.interviews.models import InterviewSession
+from backend.services.shared.note_ranges import normalize_note_bounds, parse_note_name_to_midi
 
 
 QUESTION_ORDER = [
@@ -209,6 +210,22 @@ def _validate_answer(question: InterviewQuestion, answer: InterviewAnswerValue) 
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="noteRange is required for note_range questions.",
             )
+        note_min = answer.noteRange.min.strip()
+        note_max = answer.noteRange.max.strip()
+        if _is_effective_range_value(note_min) != _is_effective_range_value(note_max):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="noteRange must provide either two supported note names or two placeholder values.",
+            )
+        if _is_effective_range_value(note_min):
+            try:
+                parse_note_name_to_midi(note_min)
+                parse_note_name_to_midi(note_max)
+            except ValueError as error:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="noteRange must use supported note names like G3 to D5.",
+                ) from error
         return
 
     if question.type == InterviewQuestionType.NOTE_TEXT:
@@ -246,6 +263,22 @@ def _apply_answer_to_case(case: TranspositionCase, question: InterviewQuestion, 
         case.comfort_range_min = answer.noteRange.min
         case.comfort_range_max = answer.noteRange.max
         return
+
+
+def _normalize_interview_answer(question: InterviewQuestion, answer: InterviewAnswerValue) -> None:
+    if question.type != InterviewQuestionType.NOTE_RANGE or answer.noteRange is None:
+        return
+
+    note_min = answer.noteRange.min.strip()
+    note_max = answer.noteRange.max.strip()
+    if not _is_effective_range_value(note_min):
+        answer.noteRange.min = note_min
+        answer.noteRange.max = note_max
+        return
+
+    normalized_min, normalized_max = normalize_note_bounds(note_min, note_max)
+    answer.noteRange.min = normalized_min
+    answer.noteRange.max = normalized_max
 
 
 def _sync_case_status(case: TranspositionCase, session_model: InterviewSession) -> None:
@@ -367,6 +400,7 @@ class InterviewService:
         current_question = definitions[expected_question_id]
         assert payload.answer is not None
         _validate_answer(current_question, payload.answer)
+        _normalize_interview_answer(current_question, payload.answer)
 
         answers = list(session_model.answers or [])
         low_confidence_flag = False

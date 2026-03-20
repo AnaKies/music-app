@@ -491,6 +491,115 @@ def test_short_negation_range_values_do_not_trigger_ready_for_upload():
         connection.close()
 
 
+def test_note_range_answers_are_normalized_to_low_then_high_for_later_features():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "flute"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": []},
+                },
+            )
+            comfort = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "G2", "max": "D2"}},
+                },
+            )
+
+        assert comfort.status_code == 200
+        assert comfort.json()["derivedCaseSummary"]["comfortRangeMin"] == "D2"
+        assert comfort.json()["derivedCaseSummary"]["comfortRangeMax"] == "G2"
+        persisted_case = session.query(TranspositionCase).filter(TranspositionCase.id == "case-f2-1").first()
+        assert persisted_case is not None
+        assert persisted_case.comfort_range_min == "D2"
+        assert persisted_case.comfort_range_max == "G2"
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_note_range_rejects_free_form_values_that_cannot_drive_transformation():
+    _reset_tables()
+
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case(session)
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            start = client.post("/interviews", json={"caseId": "case-f2-1"})
+            interview_id = start.json()["interviewId"]
+
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "instrument_identity",
+                    "answer": {"selectedOption": "flute"},
+                },
+            )
+            client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "challenge_areas",
+                    "answer": {"selectedOptions": []},
+                },
+            )
+            comfort = client.post(
+                "/interviews",
+                json={
+                    "caseId": "case-f2-1",
+                    "interviewId": interview_id,
+                    "questionId": "comfort_range",
+                    "answer": {"noteRange": {"min": "middle c", "max": "D5"}},
+                },
+            )
+
+        assert comfort.status_code == 422
+        assert comfort.json() == {
+            "detail": "noteRange must use supported note names like G3 to D5.",
+        }
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
 def test_low_confidence_follow_up_does_not_finalize_case_until_clarification_is_complete():
     _reset_tables()
 

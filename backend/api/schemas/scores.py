@@ -11,7 +11,14 @@ class ScoreFormat(str, Enum):
 
 class ScoreProcessingStatus(str, Enum):
     UPLOADED = "uploaded"
+    QUEUED = "queued"
+    PARSING = "parsing"
     PARSED = "parsed"
+    RECOMMENDATION_PENDING = "recommendation_pending"
+    RECOMMENDATION_READY = "recommendation_ready"
+    TRANSFORMING = "transforming"
+    COMPLETED = "completed"
+    FAILED = "failed"
     PARSE_FAILED = "parse_failed"
 
 
@@ -78,3 +85,13 @@ class ScorePreviewResponse(BaseModel):
     previewAccess: Optional[str] = None
     originalFilename: Optional[str] = None
     canonicalScoreSummary: Optional[CanonicalScoreSummary] = None
+
+
+class ScoreReadResponse(BaseModel):
+    scoreDocumentId: str
+    transpositionCaseId: str
+    processingStatus: ScoreProcessingStatus
+    originalFilename: str
+    safeSummary: str
+    sourcePreview: Optional[ScorePreviewResponse] = None
+    resultPreview: Optional[ScorePreviewResponse] = None
