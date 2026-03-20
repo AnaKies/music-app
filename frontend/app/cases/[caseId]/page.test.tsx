@@ -4,6 +4,7 @@ import { fireEvent } from '@testing-library/react';
 
 import CaseDetailPage from './page';
 import { casesApi } from '@/shared/api/cases';
+import { recommendationsApi } from '@/shared/api/recommendations';
 import { scoresApi } from '@/shared/api/scores';
 
 vi.mock('@/shared/api/cases', () => ({
@@ -21,6 +22,12 @@ vi.mock('@/shared/api/cases', () => ({
 vi.mock('@/shared/api/scores', () => ({
   scoresApi: {
     uploadScore: vi.fn(),
+  },
+}));
+
+vi.mock('@/shared/api/recommendations', () => ({
+  recommendationsApi: {
+    generateRecommendations: vi.fn(),
   },
 }));
 
@@ -193,5 +200,118 @@ describe('CaseDetailPage', () => {
     });
     expect(await screen.findByText('Score parsed successfully')).toBeInTheDocument();
     expect(screen.getByText(/Parsed 1 part\(s\) across 1 measure\(s\)\./i)).toBeInTheDocument();
+  });
+
+  it('renders recommendation cards and allows explicit selection', async () => {
+    vi.mocked(casesApi.getCase)
+      .mockResolvedValueOnce({
+        id: 'existing-case-1',
+        status: 'ready_for_upload',
+        instrumentIdentity: 'trumpet-bb',
+        scoreCount: 0,
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-16T12:00:00Z',
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: 'G3',
+          comfort_range_max: 'D5',
+        },
+      })
+      .mockResolvedValueOnce({
+        id: 'existing-case-1',
+        status: 'ready_for_upload',
+        instrumentIdentity: 'trumpet-bb',
+        scoreCount: 1,
+        createdAt: '2024-01-15T10:00:00Z',
+        updatedAt: '2024-01-16T12:00:00Z',
+        constraints: {
+          highest_playable_tone: null,
+          lowest_playable_tone: null,
+          restricted_tones: [],
+          restricted_registers: [],
+          difficult_keys: [],
+          preferred_keys: [],
+          comfort_range_min: 'G3',
+          comfort_range_max: 'D5',
+        },
+      });
+    vi.mocked(scoresApi.uploadScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      format: 'musicxml',
+      acceptedStatus: 'parsed',
+      originalFilename: 'example.musicxml',
+      initialProcessingSnapshot: {
+        scoreDocumentId: 'score-123',
+        transpositionCaseId: 'existing-case-1',
+        processingStatus: 'parsed',
+        acceptedAt: '2026-03-19T10:00:00Z',
+        canonicalScoreSummary: {
+          schemaVersion: 'v1',
+          title: null,
+          partCount: 1,
+          measureCount: 1,
+          noteCount: 1,
+          restCount: 0,
+          parts: [{ partId: 'P1', name: 'Flute' }],
+        },
+      },
+    });
+    vi.mocked(recommendationsApi.generateRecommendations).mockResolvedValue({
+      status: 'ready',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendations: [
+        {
+          recommendationId: 'rec-primary',
+          label: 'Primary recommendation',
+          targetRange: { min: 'G3', max: 'D5' },
+          recommendedKey: 'concert_c',
+          confidence: 'medium',
+          summaryReason: 'Matches the confirmed player comfort range.',
+          warnings: [{ code: 'register_risk', severity: 'warning', message: 'Register risk is present.' }],
+          isPrimary: true,
+        },
+        {
+          recommendationId: 'rec-secondary',
+          label: 'Instrument baseline alternative',
+          targetRange: { min: 'C4', max: 'D7' },
+          recommendedKey: null,
+          confidence: 'low',
+          summaryReason: 'Generic baseline alternative.',
+          warnings: [],
+          isPrimary: false,
+        },
+      ],
+      failure: null,
+    });
+
+    render(<CaseDetailPage />);
+
+    const fileInput = await screen.findByLabelText('MusicXML file');
+    const file = new File(['<score-partwise></score-partwise>'], 'example.musicxml', {
+      type: 'application/xml',
+    });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: /upload musicxml/i }));
+
+    expect(await screen.findByRole('button', { name: /load recommendations/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /load recommendations/i }));
+
+    await waitFor(() => {
+      expect(recommendationsApi.generateRecommendations).toHaveBeenCalledWith('existing-case-1', 'score-123');
+    });
+
+    expect(await screen.findByText('Review and choose a recommendation')).toBeInTheDocument();
+    expect(screen.getByText('Primary recommendation')).toBeInTheDocument();
+    expect(screen.getByText('Instrument baseline alternative')).toBeInTheDocument();
+    expect(screen.getByText('Register risk is present.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /select recommendation/i })[0]);
+    expect(await screen.findByText(/A recommendation is selected for the next transformation step/i)).toBeInTheDocument();
   });
 });
