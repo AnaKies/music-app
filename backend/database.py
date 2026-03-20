@@ -1,9 +1,11 @@
+import os
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # Für MVP-Zwecke verwenden wir SQLite lokal, falls keine Postgres-URL konfiguriert ist
-SQLALCHEMY_DATABASE_URL = "sqlite:///./musicapp.db"
+SQLALCHEMY_DATABASE_URL = os.getenv("SQLALCHEMY_DATABASE_URL", "sqlite:///./musicapp.db")
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}

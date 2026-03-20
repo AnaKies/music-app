@@ -1,0 +1,41 @@
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    env_file:
+      - ../environments/preview/preview.env
+    environment:
+      PYTHONPATH: /app
+    ports:
+      - "8000:8000"
+    volumes:
+      - musicapp-preview-data:/app/data
+      - musicapp-worker-heartbeat:/tmp/musicapp-worker
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    command: ["/bin/sh", "/app/scripts/preview/run-worker.sh"]
+    env_file:
+      - ../environments/preview/preview.env
+    environment:
+      WORKER_RUNTIME_MODE: separate
+    volumes:
+      - musicapp-worker-heartbeat:/tmp/musicapp-worker
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile
+    env_file:
+      - ../environments/preview/preview.env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  musicapp-preview-data:
+  musicapp-worker-heartbeat:

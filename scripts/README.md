@@ -23,6 +23,23 @@ This will:
 
 Or press `Ctrl+C` in the terminal where `start.sh` is running.
 
+### Start Preview Infrastructure
+
+```bash
+./scripts/preview/start-preview.sh
+```
+
+This starts the shareable preview topology with separate:
+- Frontend runtime on http://localhost:3000
+- API runtime on http://localhost:8000
+- Worker heartbeat runtime for deploy verification
+
+### Stop Preview Infrastructure
+
+```bash
+./scripts/preview/stop-preview.sh
+```
+
 ## Manual Start (Alternative)
 
 If you prefer to start servers separately:
@@ -50,6 +67,7 @@ npm run dev
 | Backend API | http://localhost:8000 | REST API |
 | API Docs | http://localhost:8000/docs | Swagger/OpenAPI documentation |
 | Health Check | http://localhost:8000/health | Backend health status |
+| Worker Health | http://localhost:8000/health/worker | Worker liveness signal with explicit runtime semantics |
 
 ## Requirements
 
@@ -107,6 +125,16 @@ npm --version
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
+### Preview Environment
+
+Preview configuration is isolated in:
+
+[`infra/environments/preview/preview.env`](/Users/anastasiakiessig/Library/Mobile%20Documents/com~apple~CloudDocs/AI_project/MusicApp/infra/environments/preview/preview.env)
+
+Template:
+
+[`infra/environments/preview/preview.env.example`](/Users/anastasiakiessig/Library/Mobile%20Documents/com~apple~CloudDocs/AI_project/MusicApp/infra/environments/preview/preview.env.example)
+
 ## Testing
 
 ### Run Backend Tests
@@ -122,6 +150,50 @@ python3 -m pytest tests/
 cd frontend
 npm test -- --run
 ```
+
+### Run Preview Smoke Verification
+
+```bash
+API_BASE_URL=http://localhost:8000 \
+FRONTEND_BASE_URL=http://localhost:3000 \
+SCORE_ID=<existing-score-id> \
+./scripts/verification/preview-smoke.sh
+```
+
+If you intentionally want to skip the score-status gate:
+
+```bash
+API_BASE_URL=http://localhost:8000 \
+FRONTEND_BASE_URL=http://localhost:3000 \
+ALLOW_SKIP_SCORE_STATUS=true \
+./scripts/verification/preview-smoke.sh
+```
+
+### Run Post-Deploy Checklist
+
+```bash
+API_BASE_URL=http://localhost:8000 \
+FRONTEND_BASE_URL=http://localhost:3000 \
+SCORE_ID=<existing-score-id> \
+./scripts/verification/post-deploy-checklist.sh
+```
+
+Optional environment-state drift verification:
+
+```bash
+PREVIEW_API_BASE_URL=http://preview-api.example \
+PRODUCTION_API_BASE_URL=http://prod-api.example \
+SCORE_ID=<shared-score-id> \
+TRANSFORMATION_ID=<optional-shared-transformation-id> \
+python3 ./scripts/verification/contract-drift-check.py
+```
+
+Notes:
+- `preview-smoke.sh` now treats score-status verification as required by default.
+- The frontend-to-backend check uses `GET /api/health/backend` on the frontend, so a broken frontend API configuration becomes visible.
+- `GET /health/worker` reports inline-MVP health by default, but in preview it uses the worker heartbeat file from `preview.env` to distinguish a healthy worker from an absent one.
+- The preview topology is defined in [`infra/deployment/docker-compose.preview.yml`](/Users/anastasiakiessig/Library/Mobile%20Documents/com~apple~CloudDocs/AI_project/MusicApp/infra/deployment/docker-compose.preview.yml).
+- Preview uses `NEXT_PUBLIC_API_URL=http://localhost:8000` for browser requests and `INTERNAL_API_BASE_URL=http://api:8000` for server-side frontend probes inside Compose.
 
 ## Logs
 

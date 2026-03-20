@@ -1,0 +1,16 @@
+.git
+.pytest_cache
+.DS_Store
+node_modules
+frontend/node_modules
+frontend/.next
+frontend/playwright-report
+frontend/test-results
+coverage
+dist
+build
+backend/musicapp.db
+backend/musicapp 2.db
+musicapp.db
+docs/memory
+docs/safety/reviews
