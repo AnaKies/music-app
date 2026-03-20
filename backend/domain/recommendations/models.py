@@ -21,4 +21,5 @@ class RangeRecommendation(Base):
     summary_reason = Column(String, nullable=False)
     warnings = Column(JSON, nullable=False, default=list)
     is_primary = Column(Boolean, nullable=False, default=False)
+    is_stale = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

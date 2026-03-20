@@ -124,6 +124,10 @@ export default function CaseDetailPage() {
   const isResultPreviewReady = resultPreviewResult?.availability === 'ready';
   const resultDownloadUrl =
     activeScoreDocumentId && isResultPreviewReady ? scoresApi.getResultDownloadUrl(activeScoreDocumentId) : null;
+  const hasStaleRecommendations = recommendationResult?.recommendations.some((item) => item.isStale) ?? false;
+  const selectedRecommendation =
+    recommendationResult?.recommendations.find((item) => item.recommendationId === selectedRecommendationId) ?? null;
+  const isSelectedRecommendationStale = selectedRecommendation?.isStale ?? false;
 
   useEffect(() => {
     let isMounted = true;
@@ -166,6 +170,61 @@ export default function CaseDetailPage() {
       isMounted = false;
     };
   }, [activeScoreDocumentId]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadRecommendations(scoreDocumentId: string) {
+      if (!caseDetail) {
+        return;
+      }
+
+      try {
+        const response = await recommendationsApi.getRecommendations(caseDetail.id, scoreDocumentId);
+        if (!isMounted) {
+          return;
+        }
+
+        setRecommendationResult(response.recommendations.length ? response : null);
+      } catch (caughtError) {
+        if (!isMounted) {
+          return;
+        }
+
+        if (caughtError instanceof ApiError && caughtError.status === 404) {
+          setRecommendationResult(null);
+          return;
+        }
+
+        setRecommendationResult(null);
+      }
+    }
+
+    if (!activeScoreDocumentId || !caseDetail) {
+      setRecommendationResult(null);
+      return;
+    }
+
+    void loadRecommendations(activeScoreDocumentId);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeScoreDocumentId, caseDetail]);
+
+  useEffect(() => {
+    if (!selectedRecommendationId) {
+      return;
+    }
+
+    const activeRecommendation = recommendationResult?.recommendations.find(
+      (item) => item.recommendationId === selectedRecommendationId
+    );
+
+    if (!activeRecommendation || activeRecommendation.isStale) {
+      setSelectedRecommendationId(null);
+    }
+  }, [recommendationResult, selectedRecommendationId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -263,6 +322,9 @@ export default function CaseDetailPage() {
   }
 
   function handleSelectRecommendation(item: RecommendationItem) {
+    if (item.isStale) {
+      return;
+    }
     setSelectedRecommendationId(item.recommendationId);
     setTransformationResult(null);
   }
@@ -636,12 +698,12 @@ export default function CaseDetailPage() {
                   </div>
                 </div>
               ) : null}
-              {isNotationPreviewReady ? (
+              {isNotationPreviewReady || recommendationResult ? (
                 <div className="new-case-actions new-case-actions--inline score-preview__actions">
                   <button
                     type="button"
                     className="new-case-actions__button new-case-actions__button--primary"
-                    disabled={isGeneratingRecommendations}
+                    disabled={isGeneratingRecommendations || !activeScoreDocumentId}
                     onClick={() => void handleGenerateRecommendations()}
                   >
                     <span>{isGeneratingRecommendations ? 'Generating...' : 'Load Recommendations'}</span>
@@ -694,6 +756,9 @@ export default function CaseDetailPage() {
                             {item.confidence}
                           </span>
                         </div>
+                        {item.isStale ? (
+                          <p className="recommendation-card__meta">Stale recommendation. Regenerate recommendations before transforming.</p>
+                        ) : null}
                         <p className="recommendation-card__range">
                           {item.targetRange.min} to {item.targetRange.max}
                         </p>
@@ -716,23 +781,43 @@ export default function CaseDetailPage() {
                         <button
                           type="button"
                           className="new-case-actions__button"
+                          disabled={item.isStale}
                           onClick={() => handleSelectRecommendation(item)}
                         >
-                          <span>{selectedRecommendationId === item.recommendationId ? 'Selected' : 'Select recommendation'}</span>
+                          <span>
+                            {item.isStale
+                              ? 'Stale recommendation'
+                              : selectedRecommendationId === item.recommendationId
+                                ? 'Selected'
+                                : 'Select recommendation'}
+                          </span>
                         </button>
                       </article>
                     ))}
                   </div>
+                  {hasStaleRecommendations ? (
+                    <div className="interview-follow-up">
+                      <div>
+                        <p className="interview-follow-up__title">Recommendation refresh required</p>
+                        <p className="interview-follow-up__text">
+                          At least one recommendation is stale because the case constraints changed. Load recommendations again
+                          before running a transformation.
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
                   {selectedRecommendationId ? (
                     <>
                       <p className="recommendation-workspace__selection">
-                        A recommendation is selected for the next transformation step. No automatic transformation has started.
+                        {isSelectedRecommendationStale
+                          ? 'The selected recommendation is stale and cannot be used. Regenerate recommendations before continuing.'
+                          : 'A recommendation is selected for the next transformation step. No automatic transformation has started.'}
                       </p>
                       <div className="new-case-actions new-case-actions--inline">
                         <button
                           type="button"
                           className="new-case-actions__button new-case-actions__button--primary"
-                          disabled={isTransforming}
+                          disabled={isTransforming || isSelectedRecommendationStale}
                           onClick={() => void handleRunTransformation()}
                         >
                           <span>{isTransforming ? 'Transforming...' : 'Run Transformation'}</span>

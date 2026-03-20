@@ -103,6 +103,39 @@ def generate_recommendations(
     )
 
 
+def get_recommendations_read(
+    db: Session,
+    transposition_case_id: str,
+    score_document_id: str,
+) -> RecommendationResponse:
+    stored_recommendations = (
+        db.query(RangeRecommendation)
+        .filter(
+            RangeRecommendation.transposition_case_id == transposition_case_id,
+            RangeRecommendation.score_document_id == score_document_id,
+        )
+        .order_by(RangeRecommendation.created_at.asc())
+        .all()
+    )
+
+    if not stored_recommendations:
+        return RecommendationResponse(
+            status=RecommendationStatus.READY,
+            transpositionCaseId=transposition_case_id,
+            scoreDocumentId=score_document_id,
+            recommendations=[],
+            failure=None,
+        )
+
+    return RecommendationResponse(
+        status=RecommendationStatus.READY,
+        transpositionCaseId=transposition_case_id,
+        scoreDocumentId=score_document_id,
+        recommendations=[_build_recommendation_item(item) for item in stored_recommendations],
+        failure=None,
+    )
+
+
 def _confidence_for_context(context) -> RecommendationConfidence:
     if context.inferredConstraints is not None:
         return RecommendationConfidence.LOW
@@ -173,6 +206,7 @@ def _persist_recommendations(
                 summary_reason=item.summaryReason,
                 warnings=[warning.model_dump() for warning in item.warnings],
                 is_primary=item.isPrimary,
+                is_stale=False,
             )
         )
 
@@ -184,3 +218,20 @@ def _normalized_target_range(range_min: str, range_max: str) -> tuple[str, str]:
         return normalize_note_bounds(range_min, range_max)
     except ValueError:
         return range_min, range_max
+
+
+def _build_recommendation_item(recommendation: RangeRecommendation) -> RecommendationItem:
+    return RecommendationItem(
+        recommendationId=recommendation.id,
+        label=recommendation.label,
+        targetRange=RecommendationTargetRange(
+            min=recommendation.target_range_min,
+            max=recommendation.target_range_max,
+        ),
+        recommendedKey=recommendation.recommended_key,
+        confidence=recommendation.confidence,
+        summaryReason=recommendation.summary_reason,
+        warnings=[RecommendationWarning(**warning) for warning in (recommendation.warnings or [])],
+        isPrimary=recommendation.is_primary,
+        isStale=recommendation.is_stale,
+    )

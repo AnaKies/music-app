@@ -95,6 +95,7 @@ class RecommendationItem(BaseModel):
     summaryReason: str
     warnings: List[RecommendationWarning] = Field(default_factory=list)
     isPrimary: bool
+    isStale: bool = False
 
 
 class RecommendationFailure(BaseModel):

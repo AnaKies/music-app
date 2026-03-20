@@ -42,6 +42,7 @@ vi.mock('@/shared/api/scores', () => ({
 
 vi.mock('@/shared/api/recommendations', () => ({
   recommendationsApi: {
+    getRecommendations: vi.fn(),
     generateRecommendations: vi.fn(),
   },
 }));
@@ -63,6 +64,13 @@ describe('CaseDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('confirm', vi.fn(() => true));
+    vi.mocked(recommendationsApi.getRecommendations).mockResolvedValue({
+      status: 'ready',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendations: [],
+      failure: null,
+    });
     vi.mocked(scoresApi.getResultDownloadUrl).mockImplementation(
       (scoreDocumentId: string) => `http://localhost:8000/scores/${scoreDocumentId}/download?artifact=result`
     );
@@ -463,6 +471,7 @@ describe('CaseDetailPage', () => {
           summaryReason: 'Matches the confirmed player comfort range.',
           warnings: [{ code: 'register_risk', severity: 'warning', message: 'Register risk is present.' }],
           isPrimary: true,
+          isStale: false,
         },
         {
           recommendationId: 'rec-secondary',
@@ -473,6 +482,7 @@ describe('CaseDetailPage', () => {
           summaryReason: 'Generic baseline alternative.',
           warnings: [],
           isPrimary: false,
+          isStale: false,
         },
       ],
       failure: null,
@@ -558,6 +568,83 @@ describe('CaseDetailPage', () => {
       'href',
       'http://localhost:8000/scores/score-123/download?artifact=result'
     );
+  });
+
+  it('renders stale recommendations as blocked until they are regenerated', async () => {
+    vi.mocked(casesApi.getCase).mockResolvedValue({
+      id: 'existing-case-1',
+      status: 'ready_for_upload',
+      instrumentIdentity: 'trumpet-bb',
+      scoreCount: 1,
+      createdAt: '2024-01-15T10:00:00Z',
+      updatedAt: '2024-01-16T12:00:00Z',
+      latestScoreDocumentId: 'score-123',
+      constraints: {
+        highest_playable_tone: null,
+        lowest_playable_tone: null,
+        restricted_tones: [],
+        restricted_registers: [],
+        difficult_keys: [],
+        preferred_keys: [],
+        comfort_range_min: 'A3',
+        comfort_range_max: 'E5',
+      },
+    });
+    vi.mocked(scoresApi.getScore).mockResolvedValue({
+      scoreDocumentId: 'score-123',
+      transpositionCaseId: 'existing-case-1',
+      processingStatus: 'recommendation_ready',
+      originalFilename: 'example.musicxml',
+      safeSummary: 'The score is ready for recommendation review.',
+      latestTransformationJobId: null,
+      sourcePreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'source',
+        availability: 'ready',
+        rendererFormat: 'musicxml_preview',
+        pageCount: 1,
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'The uploaded score is ready for read-only preview.',
+        previewAccess: '/scores/score-123/preview/content?revision=2026-03-20T10:00:00+00:00',
+        originalFilename: 'example.musicxml',
+      },
+      resultPreview: {
+        scoreDocumentId: 'score-123',
+        artifactRole: 'result',
+        availability: 'unavailable',
+        revisionToken: '2026-03-20T10:00:00+00:00',
+        safeSummary: 'A result preview is not available yet because no transformed result artifact exists.',
+        originalFilename: 'example.musicxml',
+      },
+    });
+    vi.mocked(recommendationsApi.getRecommendations).mockResolvedValue({
+      status: 'ready',
+      transpositionCaseId: 'existing-case-1',
+      scoreDocumentId: 'score-123',
+      recommendations: [
+        {
+          recommendationId: 'rec-stale-1',
+          label: 'Primary recommendation',
+          targetRange: { min: 'G3', max: 'D5' },
+          recommendedKey: 'concert_c',
+          confidence: 'medium',
+          summaryReason: 'Matches the prior confirmed player comfort range.',
+          warnings: [],
+          isPrimary: true,
+          isStale: true,
+        },
+      ],
+      failure: null,
+    });
+
+    render(<CaseDetailPage />);
+
+    expect(await screen.findByText('Review and choose a recommendation')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /load recommendations/i })).toBeInTheDocument();
+    expect(await screen.findByText(/Recommendation refresh required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Stale recommendation\. Regenerate recommendations before transforming\./i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /stale recommendation/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /run transformation/i })).not.toBeInTheDocument();
   });
 
   it('renders a calm failed preview state for an existing uploaded score', async () => {

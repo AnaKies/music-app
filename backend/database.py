@@ -33,6 +33,11 @@ def run_startup_migrations() -> None:
         if "exported_at" not in existing_columns:
             statements.append("ALTER TABLE transformation_jobs ADD COLUMN exported_at DATETIME")
 
+    if "range_recommendations" in inspector.get_table_names():
+        existing_columns = {column["name"] for column in inspector.get_columns("range_recommendations")}
+        if "is_stale" not in existing_columns:
+            statements.append("ALTER TABLE range_recommendations ADD COLUMN is_stale BOOLEAN NOT NULL DEFAULT 0")
+
     if not statements:
         return
 

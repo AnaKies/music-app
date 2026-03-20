@@ -8,7 +8,7 @@ from backend.api.schemas.recommendations import (
 )
 from backend.database import get_db
 from backend.services.recommendations.context import build_recommendation_context
-from backend.services.recommendations.generation import generate_recommendations
+from backend.services.recommendations.generation import generate_recommendations, get_recommendations_read
 
 router = APIRouter(tags=["recommendations"])
 
@@ -34,4 +34,17 @@ def post_recommendations(
         db=db,
         transposition_case_id=payload.transpositionCaseId,
         score_document_id=payload.scoreDocumentId,
+    )
+
+
+@router.get("/recommendations", response_model=RecommendationResponse)
+def get_recommendations(
+    transpositionCaseId: str,
+    scoreDocumentId: str,
+    db: Session = Depends(get_db),
+) -> RecommendationResponse:
+    return get_recommendations_read(
+        db=db,
+        transposition_case_id=transpositionCaseId,
+        score_document_id=scoreDocumentId,
     )

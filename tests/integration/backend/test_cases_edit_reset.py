@@ -30,7 +30,7 @@ def _override_get_db(session: Session):
     return _dependency
 
 
-def test_patch_case_updates_constraints_and_clears_downstream_runtime_state():
+def test_patch_case_updates_constraints_and_marks_recommendations_stale():
     _reset_tables()
 
     connection = engine.connect()
@@ -114,7 +114,9 @@ def test_patch_case_updates_constraints_and_clears_downstream_runtime_state():
         assert payload["constraints"]["comfort_range_min"] == "A3"
         assert payload["constraints"]["comfort_range_max"] == "E5"
         assert session.query(ScoreDocument).filter(ScoreDocument.id == "score-edit-1").first() is not None
-        assert session.query(RangeRecommendation).filter(RangeRecommendation.id == "rec-edit-1").first() is None
+        recommendation = session.query(RangeRecommendation).filter(RangeRecommendation.id == "rec-edit-1").first()
+        assert recommendation is not None
+        assert recommendation.is_stale is True
         assert session.query(TransformationJob).filter(TransformationJob.id == "job-edit-1").first() is None
     finally:
         app.dependency_overrides.clear()

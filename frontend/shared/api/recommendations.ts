@@ -17,6 +17,35 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export const recommendationsApi = {
+  async getRecommendations(
+    transpositionCaseId: string,
+    scoreDocumentId: string
+  ): Promise<RecommendationResponse> {
+    try {
+      const url = new URL(`${API_BASE_URL}/recommendations`);
+      url.searchParams.set('transpositionCaseId', transpositionCaseId);
+      url.searchParams.set('scoreDocumentId', scoreDocumentId);
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      return handleResponse<RecommendationResponse>(response);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      throw new ApiError(
+        'Could not reach the backend service. Please make sure the backend is running and try again.',
+        0
+      );
+    }
+  },
+
   async generateRecommendations(
     transpositionCaseId: string,
     scoreDocumentId: string

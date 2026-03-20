@@ -172,7 +172,42 @@ def test_post_transformations_rejects_unknown_or_stale_recommendation():
 
         assert response.status_code == 409
         assert response.json() == {
-            "detail": "The selected recommendation is unknown or stale.",
+            "detail": "The selected recommendation is unknown.",
+        }
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_post_transformations_rejects_stale_recommendation():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_score_and_recommendation(session)
+    recommendation = session.query(RangeRecommendation).filter(RangeRecommendation.id == "rec-1").first()
+    assert recommendation is not None
+    recommendation.is_stale = True
+    session.add(recommendation)
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/transformations",
+                json={
+                    "transpositionCaseId": "case-1",
+                    "scoreDocumentId": "score-1",
+                    "recommendationId": "rec-1",
+                },
+            )
+
+        assert response.status_code == 409
+        assert response.json() == {
+            "detail": "The selected recommendation is stale. Regenerate recommendations before transforming.",
         }
     finally:
         app.dependency_overrides.clear()

@@ -54,7 +54,7 @@ class CaseService:
         )
 
         if has_relevant_changes:
-            _clear_downstream_runtime_state(db, case.id)
+            _clear_downstream_runtime_state(db, case.id, mark_recommendations_stale=True)
 
         db.add(case)
         db.commit()
@@ -144,13 +144,20 @@ def _clear_downstream_runtime_state(
     *,
     remove_scores: bool = False,
     remove_interviews: bool = False,
+    mark_recommendations_stale: bool = False,
 ) -> None:
     db.query(TransformationJob).filter(TransformationJob.transposition_case_id == case_id).delete(
         synchronize_session=False
     )
-    db.query(RangeRecommendation).filter(RangeRecommendation.transposition_case_id == case_id).delete(
-        synchronize_session=False
-    )
+    if mark_recommendations_stale:
+        db.query(RangeRecommendation).filter(RangeRecommendation.transposition_case_id == case_id).update(
+            {RangeRecommendation.is_stale: True},
+            synchronize_session=False,
+        )
+    else:
+        db.query(RangeRecommendation).filter(RangeRecommendation.transposition_case_id == case_id).delete(
+            synchronize_session=False
+        )
     if remove_scores:
         score_documents = db.query(ScoreDocument).filter(ScoreDocument.transposition_case_id == case_id).all()
         for score_document in score_documents:

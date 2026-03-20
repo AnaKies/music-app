@@ -22,6 +22,7 @@ export interface RecommendationItem {
   summaryReason: string;
   warnings: RecommendationWarning[];
   isPrimary: boolean;
+  isStale: boolean;
 }
 
 export interface RecommendationFailure {

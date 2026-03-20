@@ -82,6 +82,7 @@ def test_post_recommendations_returns_primary_and_secondary_items():
         assert payload["status"] == "ready"
         assert len(payload["recommendations"]) == 2
         assert payload["recommendations"][0]["isPrimary"] is True
+        assert payload["recommendations"][0]["isStale"] is False
         assert payload["recommendations"][0]["confidence"] == "medium"
         assert payload["recommendations"][1]["isPrimary"] is False
 
@@ -191,6 +192,58 @@ def test_post_recommendations_keeps_payload_presentation_safe():
         assert "provider" not in serialized
         assert "llm" not in serialized
         assert "model said" not in serialized
+    finally:
+        app.dependency_overrides.clear()
+        transaction.rollback()
+        session.close()
+        connection.close()
+
+
+def test_get_recommendations_returns_persisted_stale_state():
+    _reset_tables()
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    _seed_case_score(session)
+    session.add(
+        RangeRecommendation(
+            id="rec-stale-1",
+            transposition_case_id="case-1",
+            score_document_id="score-1",
+            label="Primary recommendation",
+            target_range_min="G3",
+            target_range_max="D5",
+            recommended_key="concert_c",
+            confidence="medium",
+            summary_reason="Matches the confirmed player comfort range.",
+            warnings=[],
+            is_primary=True,
+            is_stale=True,
+        )
+    )
+    session.commit()
+    app.dependency_overrides[get_db] = _override_get_db(session)
+
+    try:
+        with TestClient(app) as client:
+            response = client.get("/recommendations", params={"transpositionCaseId": "case-1", "scoreDocumentId": "score-1"})
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"] == "ready"
+        assert payload["recommendations"] == [
+            {
+                "recommendationId": "rec-stale-1",
+                "label": "Primary recommendation",
+                "targetRange": {"min": "G3", "max": "D5"},
+                "recommendedKey": "concert_c",
+                "confidence": "medium",
+                "summaryReason": "Matches the confirmed player comfort range.",
+                "warnings": [],
+                "isPrimary": True,
+                "isStale": True,
+            }
+        ]
     finally:
         app.dependency_overrides.clear()
         transaction.rollback()

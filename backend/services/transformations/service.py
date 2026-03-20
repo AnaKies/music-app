@@ -52,7 +52,13 @@ def create_transformation(
     if recommendation is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="The selected recommendation is unknown or stale.",
+            detail="The selected recommendation is unknown.",
+        )
+
+    if recommendation.is_stale:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The selected recommendation is stale. Regenerate recommendations before transforming.",
         )
 
     try:
