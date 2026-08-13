@@ -31,3 +31,12 @@ pnpm-debug.log*
 .cache/
 tmp/
 temp/
+
+# Python bytecode, Next.js build output and the local development database. All
+# written by tools on this machine, none of it shared work -- and while they sit in
+# git status untracked, the automatic fast-forward into this checkout is skipped
+# silently. There were fourteen __pycache__ folders doing exactly that on 2026-08-13.
+__pycache__/
+*.py[cod]
+.next/
+backend/musicapp.db
